@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Environment variables (NEVER commit secrets)
+.env
+.env.local
+.env.production
+*.env
+
+# Database (local dev only — Railway uses ephemeral storage)
+*.db
+*.sqlite
+*.sqlite3
+prds.db
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Static generated files
+static/uploads/

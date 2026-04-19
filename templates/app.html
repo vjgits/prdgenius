@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PRDGenius Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    body { font-family:'Inter',sans-serif; background:#0a0a14; }
+
+    /* PRD output typography */
+    .prd-output h1 { font-size:1.6rem;font-weight:800;color:#fff;margin:0 0 0.5rem;border-bottom:2px solid #4338ca;padding-bottom:0.75rem; }
+    .prd-output h2 { font-size:1.15rem;font-weight:700;color:#e0e7ff;margin:2rem 0 0.75rem;padding:0.4rem 0.85rem;background:linear-gradient(90deg,rgba(67,56,202,0.18),transparent);border-left:3px solid #6366f1;border-radius:0 6px 6px 0; }
+    .prd-output h3 { font-size:1rem;font-weight:600;color:#c7d2fe;margin:1.25rem 0 0.5rem; }
+    .prd-output p { color:#9ca3af;line-height:1.75;margin:0.5rem 0;font-size:0.9rem; }
+    .prd-output ul,.prd-output ol { padding-left:1.5rem;margin:0.5rem 0; }
+    .prd-output li { color:#9ca3af;line-height:1.7;font-size:0.9rem;margin:0.25rem 0; }
+    .prd-output strong { color:#e0e7ff; }
+    .prd-output em { color:#a5b4fc;font-style:italic; }
+    .prd-output table { width:100%;border-collapse:collapse;margin:1rem 0;font-size:0.85rem; }
+    .prd-output th { background:linear-gradient(135deg,#4338ca,#6366f1);color:#fff;padding:0.65rem 0.85rem;text-align:left;font-weight:600;border:1px solid #4338ca; }
+    .prd-output td { color:#9ca3af;padding:0.6rem 0.85rem;border:1px solid #1f2937; }
+    .prd-output tr:nth-child(even) td { background:rgba(99,102,241,0.05); }
+    .prd-output tr:hover td { background:rgba(99,102,241,0.08);transition:background 0.1s; }
+    .prd-output blockquote { border-left:3px solid #6366f1;padding:0.5rem 1rem;background:rgba(99,102,241,0.08);color:#a5b4fc;font-style:italic;margin:0.75rem 0;border-radius:0 6px 6px 0; }
+    .prd-output hr { border:none;border-top:1px solid #1f2937;margin:1.75rem 0; }
+    .prd-output code { background:#1e1b4b;color:#a5b4fc;padding:0.15rem 0.45rem;border-radius:4px;font-size:0.8rem;border:1px solid #312e81; }
+    .prd-output pre { background:#0f0f1a;border:1px solid #1f2937;border-radius:8px;padding:1rem;overflow-x:auto;margin:0.75rem 0; }
+    .prd-output input[type=checkbox] { accent-color:#6366f1; }
+
+    /* Spinner */
+    .loader { width:18px;height:18px;border:2px solid rgba(255,255,255,0.25);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;vertical-align:middle; }
+    .big-spinner { width:52px;height:52px;border:3px solid rgba(99,102,241,0.2);border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .spinner-overlay { display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:340px;gap:18px; }
+
+    /* Sidebar */
+    .sidebar-item:hover { background:rgba(99,102,241,0.12);border-radius:8px; }
+    .format-btn.active { border-color:#6366f1 !important;background:linear-gradient(135deg,rgba(99,102,241,0.2),rgba(67,56,202,0.1)) !important; }
+    .dl-btn { transition:all 0.15s; }
+    .dl-btn:hover { transform:translateY(-1px); }
+
+    @media print {
+      aside, #generatorPanel, #upgradeGate, .no-print { display:none !important; }
+      body { background:white !important; }
+      #prdResult { padding:0 !important; }
+      .prd-output { background:white !important; border:none !important; padding:0 !important; }
+      .prd-output h1,.prd-output h2,.prd-output h3 { color:#000 !important; }
+      .prd-output h2 { background:none !important; border-left:3px solid #4338ca !important; }
+      .prd-output p,.prd-output li,.prd-output td { color:#333 !important; }
+      .prd-output th { background:#4338ca !important;-webkit-print-color-adjust:exact;print-color-adjust:exact; }
+      .sticky { position:static !important; display:none !important; }
+    }
+  </style>
+</head>
+<body class="min-h-screen text-white flex">
+
+  <!-- Sidebar -->
+  <aside class="w-64 flex flex-col h-screen sticky top-0 shrink-0" style="background:linear-gradient(180deg,#0d0d22 0%,#0a0a14 100%);border-right:1px solid rgba(255,255,255,0.07)">
+    <div class="p-5" style="border-bottom:1px solid rgba(255,255,255,0.07)">
+      <a href="/" class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">P</div>
+        <div>
+          <span class="font-bold text-base text-white">PRDGenius</span>
+          <span class="text-xs text-indigo-400 block -mt-0.5">AI Product Manager</span>
+        </div>
+      </a>
+    </div>
+
+    <div class="p-4">
+      <button onclick="showGenerator()"
+        class="w-full text-white py-2.5 px-4 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 justify-center"
+        style="background:linear-gradient(135deg,#6366f1,#4f46e5)">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+        New PRD
+      </button>
+    </div>
+
+    <div class="px-4 pb-3">
+      {% if user.plan == 'free' %}
+      <div class="rounded-xl p-3 text-xs" style="background:rgba(67,56,202,0.1);border:1px solid rgba(99,102,241,0.2)">
+        <div class="flex justify-between mb-1.5">
+          <span class="text-indigo-300 font-medium">Free plan</span>
+          <span class="{{ 'text-red-400 font-semibold' if user.prds_used_this_month >= free_limit else 'text-indigo-300' }}">
+            {{ user.prds_used_this_month }}/{{ free_limit }} PRDs
+          </span>
+        </div>
+        <div class="rounded-full h-1.5 mb-3" style="background:rgba(31,41,55,0.8)">
+          <div class="h-1.5 rounded-full" style="width:{{ [user.prds_used_this_month / free_limit * 100, 100]|min }}%;background:{{ 'linear-gradient(90deg,#ef4444,#f87171)' if user.prds_used_this_month >= free_limit else 'linear-gradient(90deg,#6366f1,#8b5cf6)' }}"></div>
+        </div>
+        <a href="/#pricing" class="text-indigo-400 font-semibold hover:text-indigo-300 transition flex items-center gap-1">
+          <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+          Upgrade to Pro — $20/mo
+        </a>
+      </div>
+      {% else %}
+      <div class="rounded-xl p-3 text-xs" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35)">
+        <div class="flex justify-between text-indigo-300 mb-1.5 font-medium">
+          <span>✨ Pro Plan</span>
+          <span>{{ user.prds_used_this_month }}/{{ pro_limit }}</span>
+        </div>
+        <div class="rounded-full h-1.5" style="background:rgba(67,56,202,0.3)">
+          <div class="h-1.5 rounded-full" style="width:{{ [user.prds_used_this_month / pro_limit * 100, 100]|min }}%;background:linear-gradient(90deg,#818cf8,#a78bfa)"></div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-2">
+      <p class="text-xs text-gray-600 uppercase tracking-wider px-2 py-3 font-semibold">Recent PRDs</p>
+      {% if prds %}
+        {% for prd in prds %}
+        <a href="/prd/{{ prd.id }}" class="sidebar-item flex items-start gap-2.5 px-3 py-2.5 mb-0.5 block transition-all">
+          <div class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></div>
+          <div class="min-w-0">
+            <span class="text-sm text-gray-200 truncate font-medium block">{{ prd.feature_name }}</span>
+            <span class="text-xs text-gray-600 capitalize">{{ prd.format_style }} · {{ prd.created_at[:10] }}</span>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <p class="text-xs text-gray-600 px-3 py-2 italic">No PRDs yet. Generate your first!</p>
+      {% endif %}
+    </div>
+
+    <div class="p-4" style="border-top:1px solid rgba(255,255,255,0.07)">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">
+            {{ user.name[0].upper() }}
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs font-semibold truncate text-gray-200">{{ user.name }}</p>
+            <p class="text-xs text-gray-500 truncate">{{ user.email }}</p>
+          </div>
+        </div>
+        <form action="/api/logout" method="post">
+          <button type="submit" class="text-gray-600 hover:text-red-400 transition" title="Log out">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+          </button>
+        </form>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 min-h-screen overflow-y-auto">
+
+    <!-- Generator -->
+    <div id="generatorPanel" class="{{ 'hidden' if at_limit and last_prd else '' }} max-w-3xl mx-auto px-6 py-10">
+      <div class="mb-8">
+        <h1 class="text-2xl font-bold mb-1" style="background:linear-gradient(90deg,#fff,#c7d2fe);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">Generate a PRD</h1>
+        <p class="text-gray-500 text-sm">Fill in what you know. PRDGenius writes the rest — FAANG-quality every time.</p>
+      </div>
+
+      <div id="limitError" class="hidden rounded-xl px-4 py-3 mb-6 text-sm" style="background:linear-gradient(135deg,#1e1b4b,#1a1333);border:1px solid #4338ca">
+        <p class="text-indigo-200 font-semibold mb-1">You have used your 1 free PRD this month.</p>
+        <a href="/#pricing" class="text-indigo-400 underline font-semibold hover:text-indigo-300">Upgrade to Pro — 100 PRDs for $20/month</a>
+      </div>
+      <div id="genError" class="hidden text-red-300 text-sm px-4 py-3 rounded-xl mb-6" style="background:rgba(127,29,29,0.4);border:1px solid rgba(185,28,28,0.5)"></div>
+
+      <form id="prdForm" class="space-y-5">
+        <div>
+          <label class="block text-sm font-semibold text-gray-300 mb-3">PRD Format</label>
+          <div class="grid grid-cols-3 gap-3">
+            <button type="button" data-format="google" onclick="selectFormat('google')"
+              class="format-btn active border-2 border-indigo-500 rounded-xl p-3.5 text-left transition">
+              <div class="text-xl mb-1.5">🏢</div>
+              <div class="text-xs font-bold text-white">Google Style</div>
+              <div class="text-xs text-gray-400 mt-0.5">Full spec, 13 sections</div>
+            </button>
+            <button type="button" data-format="amazon" onclick="selectFormat('amazon')"
+              class="format-btn border-2 border-gray-700 rounded-xl p-3.5 text-left transition hover:border-gray-500" style="background:rgba(17,24,39,0.5)">
+              <div class="text-xl mb-1.5">📦</div>
+              <div class="text-xs font-bold text-white">Amazon WB</div>
+              <div class="text-xs text-gray-400 mt-0.5">Press Release + FAQ</div>
+            </button>
+            <button type="button" data-format="linear" onclick="selectFormat('linear')"
+              class="format-btn border-2 border-gray-700 rounded-xl p-3.5 text-left transition hover:border-gray-500" style="background:rgba(17,24,39,0.5)">
+              <div class="text-xl mb-1.5">⚡</div>
+              <div class="text-xs font-bold text-white">Linear Style</div>
+              <div class="text-xs text-gray-400 mt-0.5">Concise & fast</div>
+            </button>
+          </div>
+          <input type="hidden" id="selectedFormat" value="google"/>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-300 mb-1.5">Feature Name <span class="text-red-400">*</span></label>
+          <input type="text" id="featureName" required maxlength="200"
+            placeholder="e.g. Smart Notification Digest, AI-powered Search, Bulk Export"
+            class="w-full border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition text-sm" style="background:rgba(17,24,39,0.8)"/>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-300 mb-1.5">User Problem <span class="text-red-400">*</span></label>
+          <textarea id="userProblem" required rows="3"
+            placeholder="e.g. Users receive too many notifications and miss critical updates — causing churn and disengagement."
+            class="w-full border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm resize-none" style="background:rgba(17,24,39,0.8)"></textarea>
+          <p class="text-xs text-gray-600 mt-1">Be specific. What exactly breaks for the user today?</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-300 mb-1.5">Target Users</label>
+          <input type="text" id="targetUsers"
+            placeholder="e.g. Power users on Pro plan, Mobile-first users, Enterprise team admins"
+            class="w-full border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm" style="background:rgba(17,24,39,0.8)"/>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-300 mb-1.5">Company Stage</label>
+          <select id="companyStage"
+            class="w-full border border-gray-700 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm" style="background:rgba(17,24,39,0.8)">
+            <option value="Early-stage startup (pre-product market fit)">Early-stage startup (pre-PMF)</option>
+            <option value="Growth-stage startup (post-PMF, scaling)" selected>Growth-stage startup (scaling)</option>
+            <option value="Series B/C company (optimizing and expanding)">Series B/C (optimizing)</option>
+            <option value="Late-stage or public company (enterprise scale)">Late-stage / Public company</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-semibold text-gray-300 mb-1.5">Additional Context <span class="text-gray-600 font-normal">(recommended)</span></label>
+          <textarea id="context" rows="3"
+            placeholder="e.g. Competitors X and Y launched similar features. 40% of users mute notifications within 7 days. Mobile team available Q3."
+            class="w-full border border-gray-700 rounded-xl px-4 py-3 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition text-sm resize-none" style="background:rgba(17,24,39,0.8)"></textarea>
+          <p class="text-xs text-gray-600 mt-1">More context = more specific, credible PRD output.</p>
+        </div>
+
+        <button type="submit" id="generateBtn"
+          class="w-full text-white py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 no-print"
+          style="background:linear-gradient(135deg,#6366f1,#4f46e5);box-shadow:0 8px 32px rgba(99,102,241,0.3)">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          Generate FAANG-Quality PRD
+        </button>
+      </form>
+    </div>
+
+    <!-- Upgrade gate for free users at limit -->
+    {% if at_limit and last_prd %}
+    <div id="upgradeGate" class="max-w-3xl mx-auto px-6 pt-8 pb-4 no-print">
+      <div class="rounded-2xl p-6" style="background:linear-gradient(135deg,#1e1b4b,#1a1333);border:1px solid rgba(99,102,241,0.4)">
+        <div class="flex items-start gap-4">
+          <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-xl" style="background:rgba(99,102,241,0.2)">🔒</div>
+          <div class="flex-1">
+            <h3 class="font-bold text-white text-base mb-1">Your free PRD is shown below</h3>
+            <p class="text-indigo-200 text-sm leading-relaxed">You have used your 1 free PRD this month. You can view and download it anytime. To generate new PRDs or enhance this one, upgrade to Pro.</p>
+            <div class="flex flex-wrap gap-3 mt-4">
+              <a href="/#pricing" class="text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
+                style="background:linear-gradient(135deg,#6366f1,#7c3aed);box-shadow:0 4px 16px rgba(99,102,241,0.35)">
+                Upgrade to Pro — $20/month
+              </a>
+              <button onclick="showGenerator()" class="border border-gray-600 hover:border-indigo-500 text-gray-300 px-5 py-2.5 rounded-xl text-sm font-medium transition-all">
+                Generate Another PRD
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Output -->
+    <div id="outputPanel" class="{{ '' if at_limit and last_prd else 'hidden' }}">
+      <div id="loadingState" class="spinner-overlay hidden">
+        <div class="big-spinner"></div>
+        <div class="text-center">
+          <p class="text-white font-bold text-lg">Generating your PRD...</p>
+          <p class="text-gray-500 text-sm mt-1">Writing like a FAANG PM. This takes 15–30 seconds.</p>
+        </div>
+      </div>
+
+      <div id="prdResult" class="{{ '' if at_limit and last_prd else 'hidden' }} max-w-4xl mx-auto px-6 py-8">
+        <!-- Toolbar -->
+        <div class="flex items-center justify-between mb-6 sticky top-0 py-3 -mx-6 px-6 backdrop-blur z-10 no-print" style="background:rgba(10,10,20,0.95);border-bottom:1px solid rgba(255,255,255,0.06)">
+          <div class="flex items-center gap-3">
+            <button onclick="showGenerator()" class="text-gray-400 hover:text-white transition flex items-center gap-1.5 text-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+              New PRD
+            </button>
+            <span class="text-gray-700">|</span>
+            <h2 class="font-bold text-white text-sm truncate max-w-xs" id="prdTitle">
+              {% if at_limit and last_prd %}{{ last_prd.feature_name }}{% endif %}
+            </h2>
+          </div>
+          <div class="flex gap-2 items-center">
+            <button onclick="copyMarkdown()" id="copyBtn"
+              class="dl-btn flex items-center gap-1.5 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-medium transition" style="background:rgba(31,41,55,0.8);border:1px solid rgba(55,65,81,0.8)">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+              Copy MD
+            </button>
+            <button id="docxBtn" onclick="downloadDocx()"
+              class="dl-btn flex items-center gap-1.5 text-blue-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(30,58,138,0.4);border:1px solid rgba(59,130,246,0.4)">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              Word (.docx)
+            </button>
+            <button onclick="printPDF()"
+              class="dl-btn flex items-center gap-1.5 text-rose-300 px-3 py-1.5 rounded-lg text-xs font-semibold transition" style="background:rgba(136,19,55,0.3);border:1px solid rgba(244,63,94,0.35)">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+              Save as PDF
+            </button>
+          </div>
+        </div>
+
+        {% if at_limit and last_prd %}
+        <div class="rounded-xl px-4 py-3 mb-5 flex items-center justify-between no-print" style="background:linear-gradient(135deg,#1e1b4b,#1a1333);border:1px solid rgba(99,102,241,0.35)">
+          <div class="text-sm">
+            <span class="text-indigo-200 font-semibold">Free plan</span>
+            <span class="text-gray-400 ml-2">Generate more PRDs by upgrading to Pro.</span>
+          </div>
+          <a href="/#pricing" class="text-white px-4 py-1.5 rounded-lg text-xs font-bold transition shrink-0 ml-4" style="background:linear-gradient(135deg,#6366f1,#4f46e5)">Upgrade — $20/mo</a>
+        </div>
+        {% endif %}
+
+        <div id="prdContent" class="prd-output rounded-2xl p-8" style="background:rgba(15,15,30,0.7);border:1px solid rgba(255,255,255,0.07)"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    let rawMarkdown = '';
+    let currentPrdId = null;
+
+    {% if at_limit and last_prd %}
+    // Auto-load the last PRD for free users at limit
+    document.addEventListener('DOMContentLoaded', function() {
+      rawMarkdown = {{ last_prd.output | tojson }};
+      currentPrdId = {{ last_prd.id }};
+      document.getElementById('prdTitle').textContent = {{ last_prd.feature_name | tojson }};
+      document.getElementById('prdContent').innerHTML = marked.parse(rawMarkdown);
+    });
+    {% endif %}
+
+    function selectFormat(fmt) {
+      document.getElementById('selectedFormat').value = fmt;
+      document.querySelectorAll('.format-btn').forEach(btn => {
+        if (btn.dataset.format === fmt) {
+          btn.classList.add('active');
+          btn.style.background = '';
+        } else {
+          btn.classList.remove('active');
+          btn.style.background = 'rgba(17,24,39,0.5)';
+        }
+      });
+    }
+
+    function showGenerator() {
+      document.getElementById('generatorPanel').classList.remove('hidden');
+      document.getElementById('outputPanel').classList.add('hidden');
+      const gate = document.getElementById('upgradeGate');
+      if (gate) gate.classList.add('hidden');
+    }
+
+    async function copyMarkdown() {
+      try {
+        await navigator.clipboard.writeText(rawMarkdown);
+        const btn = document.getElementById('copyBtn');
+        const orig = btn.innerHTML;
+        btn.textContent = 'Copied!';
+        btn.style.color = '#4ade80';
+        setTimeout(() => { btn.innerHTML = orig; btn.style.color = ''; }, 2000);
+      } catch(e) { alert('Copy failed. Please select and copy manually.'); }
+    }
+
+    async function downloadDocx() {
+      if (!currentPrdId) { alert('Please generate a PRD first.'); return; }
+      const btn = document.getElementById('docxBtn');
+      btn.textContent = 'Downloading...';
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/api/download-prd/' + currentPrdId + '/docx');
+        if (!resp.ok) { const d = await resp.json(); throw new Error(d.detail); }
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const cd = resp.headers.get('Content-Disposition') || '';
+        const match = cd.match(/filename="(.+)"/);
+        a.download = match ? match[1] : 'PRD.docx';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch(e) {
+        alert('Download failed: ' + e.message);
+      } finally {
+        btn.innerHTML = '<svg class="w-3.5 h-3.5 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>Word (.docx)';
+        btn.disabled = false;
+      }
+    }
+
+    function printPDF() { window.print(); }
+
+    document.getElementById('prdForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('generateBtn');
+      const genErr = document.getElementById('genError');
+      const limitErr = document.getElementById('limitError');
+      genErr.classList.add('hidden'); limitErr.classList.add('hidden');
+      const featureName = document.getElementById('featureName').value.trim();
+      const userProblem = document.getElementById('userProblem').value.trim();
+      if (!featureName || !userProblem) return;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loader mr-2"></span>Generating...';
+      document.getElementById('generatorPanel').classList.add('hidden');
+      const gate = document.getElementById('upgradeGate');
+      if (gate) gate.classList.add('hidden');
+      document.getElementById('outputPanel').classList.remove('hidden');
+      document.getElementById('loadingState').classList.remove('hidden');
+      document.getElementById('prdResult').classList.add('hidden');
+      try {
+        const res = await fetch('/api/generate-prd', {
+          method: 'POST', headers: {'Content-Type':'application/json'},
+          body: JSON.stringify({
+            feature_name: featureName, user_problem: userProblem,
+            target_users: document.getElementById('targetUsers').value.trim(),
+            context: document.getElementById('context').value.trim(),
+            company_stage: document.getElementById('companyStage').value,
+            format_style: document.getElementById('selectedFormat').value
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          if (res.status === 429) { showGenerator(); limitErr.classList.remove('hidden'); }
+          else { showGenerator(); genErr.textContent = data.detail || 'Generation failed.'; genErr.classList.remove('hidden'); }
+          return;
+        }
+        rawMarkdown = data.content;
+        currentPrdId = data.prd_id;
+        document.getElementById('prdTitle').textContent = featureName;
+        document.getElementById('prdContent').innerHTML = marked.parse(rawMarkdown);
+        document.getElementById('loadingState').classList.add('hidden');
+        document.getElementById('prdResult').classList.remove('hidden');
+        window.scrollTo(0, 0);
+      } catch(ex) {
+        showGenerator();
+        genErr.textContent = 'Network error. Please check your connection.';
+        genErr.classList.remove('hidden');
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Generate FAANG-Quality PRD';
+      }
+    });
+  </script>
+</body>
+</html>

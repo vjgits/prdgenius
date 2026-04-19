@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard — PRDGenius</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: #0a0a14;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid #1e1e30;
+    }
+    .logo {
+      font-size: 1.3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #818cf8, #c084fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .badge-admin {
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    .logout-btn {
+      color: #475569;
+      font-size: 0.85rem;
+      text-decoration: none;
+      margin-left: 1rem;
+    }
+    .logout-btn:hover { color: #94a3b8; }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .stat-card {
+      background: #13131f;
+      border: 1px solid #1e1e30;
+      border-radius: 1rem;
+      padding: 1.5rem;
+    }
+    .stat-label {
+      font-size: 0.8rem;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 0.5rem;
+    }
+    .stat-value {
+      font-size: 2.2rem;
+      font-weight: 900;
+      color: #f1f5f9;
+      line-height: 1;
+    }
+    .stat-sub {
+      font-size: 0.8rem;
+      color: #64748b;
+      margin-top: 0.4rem;
+    }
+    .section {
+      background: #13131f;
+      border: 1px solid #1e1e30;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    .section-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 1rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+    th {
+      text-align: left;
+      padding: 0.6rem 0.75rem;
+      color: #64748b;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #1e1e30;
+    }
+    td {
+      padding: 0.75rem;
+      border-bottom: 1px solid #0f0f1a;
+      color: #cbd5e1;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(79, 70, 229, 0.04); }
+    .plan-pro {
+      background: rgba(79, 70, 229, 0.15);
+      border: 1px solid rgba(79, 70, 229, 0.3);
+      color: #818cf8;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .plan-free {
+      background: rgba(100, 116, 139, 0.1);
+      border: 1px solid rgba(100, 116, 139, 0.2);
+      color: #64748b;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .role-admin {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      padding: 0.2rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.7rem;
+      font-weight: 700;
+    }
+    .loading { color: #475569; font-size: 0.9rem; padding: 1rem 0; }
+    .error { color: #f87171; font-size: 0.9rem; padding: 1rem 0; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">✦ PRDGenius</div>
+    <div style="display:flex;align-items:center;gap:0.5rem;">
+      <span class="badge-admin">ADMIN</span>
+      <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Users</div>
+      <div class="stat-value" id="totalUsers">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Pro Users</div>
+      <div class="stat-value" id="proUsers">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Total PRDs</div>
+      <div class="stat-value" id="totalPrds">—</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">MRR</div>
+      <div class="stat-value" id="mrr">—</div>
+      <div class="stat-sub">@ $20/user/mo</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Users</div>
+    <div id="usersTable" class="loading">Loading…</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Recent PRDs</div>
+    <div id="prdsTable" class="loading">Loading…</div>
+  </div>
+
+  <script>
+    fetch('/api/admin/stats')
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => {
+        document.getElementById('totalUsers').textContent = data.total_users;
+        document.getElementById('proUsers').textContent = data.pro_users;
+        document.getElementById('totalPrds').textContent = data.total_prds;
+        document.getElementById('mrr').textContent = '$' + (data.pro_users * 20).toLocaleString();
+
+        // Users table
+        if (!data.users || data.users.length === 0) {
+          document.getElementById('usersTable').innerHTML = '<p style="color:#475569;font-size:0.85rem;">No users yet.</p>';
+        } else {
+          let html = '<table><thead><tr><th>Email</th><th>Name</th><th>Plan</th><th>Role</th><th>PRDs</th><th>Joined</th></tr></thead><tbody>';
+          data.users.forEach(u => {
+            const planBadge = u.plan === 'pro'
+              ? `<span class="plan-pro">PRO</span>`
+              : `<span class="plan-free">FREE</span>`;
+            const roleBadge = u.role === 'admin'
+              ? `<span class="role-admin">ADMIN</span>`
+              : '';
+            const joined = u.created_at ? u.created_at.split('T')[0] : '—';
+            html += `<tr><td>${u.email}</td><td>${u.name || '—'}</td><td>${planBadge}</td><td>${roleBadge}</td><td>${u.prd_count || 0}</td><td>${joined}</td></tr>`;
+          });
+          html += '</tbody></table>';
+          document.getElementById('usersTable').innerHTML = html;
+        }
+
+        // Recent PRDs table
+        if (!data.recent_prds || data.recent_prds.length === 0) {
+          document.getElementById('prdsTable').innerHTML = '<p style="color:#475569;font-size:0.85rem;">No PRDs yet.</p>';
+        } else {
+          let html = '<table><thead><tr><th>#</th><th>Feature</th><th>User</th><th>Date</th></tr></thead><tbody>';
+          data.recent_prds.forEach((p, i) => {
+            const date = p.created_at ? p.created_at.split('T')[0] : '—';
+            html += `<tr><td>${i+1}</td><td>${p.feature_name || '—'}</td><td>${p.user_email || '—'}</td><td>${date}</td></tr>`;
+          });
+          html += '</tbody></table>';
+          document.getElementById('prdsTable').innerHTML = html;
+        }
+      })
+      .catch(err => {
+        document.getElementById('usersTable').innerHTML = `<p class="error">Failed to load stats. Are you logged in as admin?</p>`;
+        document.getElementById('prdsTable').innerHTML = '';
+      });
+  </script>
+</body>
+</html>
