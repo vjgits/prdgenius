@@ -47,11 +47,11 @@
       btn.disabled = true; btn.textContent = 'Logging in...'; err.classList.add('hidden');
       const form = new FormData(e.target);
       try {
-        const res = await fetch('/api/login', { method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({email: form.get('email'), password: form.get('password')}) });
+        const res = await fetch('/api/login', { method: 'POST', 
+          body: form });
         const data = await res.json();
         if (res.ok) { window.location.href = '/app'; }
-        else { throw new Error(data.detail || 'Login failed'); }
+        else { let msg = 'Login failed'; if (data.error) msg = data.error; else if (data.detail) { msg = Array.isArray(data.detail) ? data.detail.map(d => d.msg || JSON.stringify(d)).join(', ') : data.detail; } throw new Error(msg); }
       } catch(ex) {
         err.textContent = ex.message; err.classList.remove('hidden');
         btn.disabled = false; btn.textContent = 'Log in';
