@@ -44,7 +44,7 @@ ALLOWED_EMAIL_DOMAINS = {
 }
 
 # ─── Config ───────────────────────────────────────────────────────────────────
-DB_PATH                = os.getenv("DB_PATH", "prd_genius.db")
+DB_PATH                = os.getenv("DB_PATH", "/data/prd_genius.db")
 PASSWORD_SALT          = os.getenv("PASSWORD_SALT", "prdgenius_s3cur3_s4lt_2024")
 PRODUCTION             = os.getenv("PRODUCTION", "false").lower() == "true"
 FREE_PLAN_LIMIT        = 1
