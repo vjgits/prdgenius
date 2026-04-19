@@ -189,7 +189,7 @@
         document.getElementById('totalUsers').textContent = data.total_users;
         document.getElementById('proUsers').textContent = data.pro_users;
         document.getElementById('totalPrds').textContent = data.total_prds;
-        document.getElementById('mrr').textContent = '$' + (data.pro_users * 20).toLocaleString();
+        document.getElementById('mrr').textContent = '$' + (data.pro_users * 9.99).toLocaleString();
 
         // Users table
         if (!data.users || data.users.length === 0) {
