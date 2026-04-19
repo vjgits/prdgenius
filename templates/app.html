@@ -115,7 +115,7 @@
         <a href="/prd/{{ prd.id }}" class="sidebar-item flex items-start gap-2.5 px-3 py-2.5 mb-0.5 block transition-all">
           <div class="w-1.5 h-1.5 rounded-full bg-indigo-500 mt-1.5 shrink-0"></div>
           <div class="min-w-0">
-            <span class="text-sm text-gray-200 truncate font-medium block">{{ prd.feature_name }}</span>
+            <span class="text-sm text-gray-200 truncate font-medium block">{{ prd.title }}</span>
             <span class="text-xs text-gray-600 capitalize">{{ prd.format_style }} · {{ prd.created_at[:10] }}</span>
           </div>
         </a>
@@ -281,7 +281,7 @@
             </button>
             <span class="text-gray-700">|</span>
             <h2 class="font-bold text-white text-sm truncate max-w-xs" id="prdTitle">
-              {% if at_limit and last_prd %}{{ last_prd.feature_name }}{% endif %}
+              {% if at_limit and last_prd %}{{ last_prd.title }}{% endif %}
             </h2>
           </div>
           <div class="flex gap-2 items-center">
@@ -328,7 +328,7 @@
     document.addEventListener('DOMContentLoaded', function() {
       rawMarkdown = {{ last_prd.output | tojson }};
       currentPrdId = {{ last_prd.id }};
-      document.getElementById('prdTitle').textContent = {{ last_prd.feature_name | tojson }};
+      document.getElementById('prdTitle').textContent = {{ last_prd.title | tojson }};
       document.getElementById('prdContent').innerHTML = marked.parse(rawMarkdown);
     });
     {% endif %}
