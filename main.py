@@ -324,7 +324,7 @@ async def api_logout(request: Request):
         conn = get_db()
         conn.execute("DELETE FROM sessions WHERE token=?", (token,))
         conn.commit(); conn.close()
-    response = JSONResponse({"success": True})
+    response = RedirectResponse("/", status_code=302)
     response.delete_cookie("session")
     return response
 
