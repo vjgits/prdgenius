@@ -416,12 +416,26 @@ Generate a complete, professional PRD in Markdown format. Include:
 
 Make it detailed, actionable, and ready for engineering teams."""
     try:
-        client  = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        message = client.messages.create(
-            model="claude-sonnet-4-6", max_tokens=max_tok,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        content = message.content[0].text
+        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        # Continuation loop — keeps generating until the model signals end_turn
+        full_text = ""
+        api_messages = [{"role": "user", "content": prompt}]
+        for _attempt in range(8):  # up to 8 rounds × 8192 tokens each
+            resp = client.messages.create(
+                model="claude-sonnet-4-6",
+                max_tokens=8192,
+                messages=api_messages
+            )
+            full_text += resp.content[0].text
+            if resp.stop_reason == "end_turn":
+                break
+            # Hit token limit — continue seamlessly from where we left off
+            api_messages = [
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": full_text},
+                {"role": "user", "content": "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."}
+            ]
+        content = full_text
     except Exception as e:
         logger.error(f"Anthropic API error: {e}")
         return JSONResponse({"error": "AI generation failed. Please try again."}, status_code=500)
