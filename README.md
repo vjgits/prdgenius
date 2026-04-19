@@ -21,7 +21,7 @@ Built as a solo end-to-end project — from ideation to production deployment �
 
 - **AI-Powered PRD Generation** — Leverages Claude Sonnet to produce detailed PRDs with user stories, acceptance criteria, success metrics, and technical considerations
 - **Authentication** — Secure signup/login with session-based auth and bcrypt password hashing
-- **Freemium Model** — Free tier (1 PRD), Pro plan ($20/month via Stripe), unlimited admin role
+- **Freemium Model** — Free tier (1 PRD), Pro plan ($9.99/month via Stripe), unlimited admin role
 - **Download Options** — Export as Word (.docx) or browser PDF
 - **Public Share Links** — Share any PRD via a unique URL
 - **Admin Dashboard** — Real-time stats: total users, MRR, recent PRDs
