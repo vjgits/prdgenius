@@ -246,9 +246,7 @@
 
     <div class="error-msg" id="errorMsg"></div>
 
-    <button class="btn-upgrade" id="upgradeBtn" onclick="startCheckout()">
-      Start 7-Day Free Trial →
-    </button>
+    <button id="upgradeBtn" onclick="startCheckout()" class="upgrade-btn">Start Pro Plan →</button>
 
     <p class="secure-note">
       🔒 Secured by Stripe · Cancel anytime
@@ -292,6 +290,28 @@
         btn.innerHTML = 'Start 7-Day Free Trial →';
       }
     }
-  </script>
+  
+      let selectedPlan = 'monthly';
+      function selectPlan(plan) {
+        selectedPlan = plan;
+        const on = 'padding:8px 24px;border-radius:50px;font-size:14px;font-weight:600;background:#4f46e5;color:white;border:none;cursor:pointer';
+        const off = 'padding:8px 24px;border-radius:50px;font-size:14px;font-weight:600;background:transparent;color:#9ca3af;border:none;cursor:pointer';
+        document.getElementById('monthlyBtn').style.cssText = plan==='monthly' ? on : off;
+        document.getElementById('yearlyBtn').style.cssText = plan==='yearly' ? on : off;
+        document.getElementById('monthlyPrice').style.display = plan==='monthly' ? 'block' : 'none';
+        document.getElementById('yearlyPrice').style.display = plan==='yearly' ? 'block' : 'none';
+      }
+      async function startCheckout() {
+        const btn = document.getElementById('upgradeBtn');
+        if(btn){ btn.disabled=true; btn.textContent='Redirecting to Stripe...'; }
+        const endpoint = selectedPlan==='yearly' ? '/api/create-yearly-checkout-session' : '/api/create-checkout-session';
+        try {
+          const res = await fetch(endpoint, {method:'POST'});
+          const data = await res.json();
+          if(data.checkout_url) window.location.href = data.checkout_url;
+          else { alert('Could not start checkout.'); if(btn){btn.disabled=false;btn.textContent='Start Pro Plan →';} }
+        } catch(e) { alert('Network error.'); if(btn){btn.disabled=false;btn.textContent='Start Pro Plan →';} }
+      }
+    </script>
 </body>
 </html>

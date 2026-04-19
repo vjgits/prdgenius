@@ -52,6 +52,7 @@ stripe.api_key         = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET  = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 STRIPE_PRICE_ID        = os.getenv("STRIPE_PRICE_ID", "")
+STRIPE_YEARLY_PRICE_ID = os.getenv("STRIPE_YEARLY_PRICE_ID", "")
 BASE_URL               = os.getenv("BASE_URL", "http://127.0.0.1:8000")
 ANTHROPIC_API_KEY      = os.getenv("ANTHROPIC_API_KEY", "")
 
@@ -92,6 +93,11 @@ def init_db():
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         );
     """)
+    conn.commit()
+    existing = [r[1] for r in conn.execute("PRAGMA table_info(prds)").fetchall()]
+    for col in ["target_users","key_features","success_metrics","company_stage","additional_context"]:
+        if col not in existing:
+            conn.execute(f"ALTER TABLE prds ADD COLUMN {col} TEXT DEFAULT ''")
     conn.commit()
     admin_email = "admin@prdgenius.ai"
     admin_pw    = hash_password("Chocolate47##")
@@ -136,7 +142,7 @@ def get_current_user(request: Request) -> Optional[dict]:
 
 # ─── Plan helpers ─────────────────────────────────────────────────────────────
 def get_plan_limit(user: dict) -> int:
-    if user.get("role") == "admin" or user.get("plan") in ("pro", "admin"):
+    if user.get("role") == "admin" or user.get("plan") in ("pro", "admin", "yearly"):
         return 999999
     return FREE_PLAN_LIMIT
 
@@ -363,7 +369,9 @@ async def generate_prd(request: Request):
     target_users    = data.get("target_users",     "").strip()
     key_features    = data.get("key_features",     "").strip()
     success_metrics = data.get("success_metrics",  "").strip()
-    format_style    = data.get("format_style",     "standard").strip()
+    format_style       = data.get("format_style",      "standard").strip()
+    company_stage      = data.get("company_stage",     "").strip()
+    additional_context = data.get("additional_context","").strip()
     if not product_name or not problem:
         return JSONResponse({"error": "Product name and problem statement are required."}, status_code=400)
     format_instructions = {
@@ -372,9 +380,20 @@ async def generate_prd(request: Request):
         "agile":     "Write an agile-style PRD with user stories and acceptance criteria.",
         "technical": "Write a technical PRD with system requirements and engineering details.",
     }.get(format_style, "Write a comprehensive PRD.")
+
+    prd_size = data.get("prd_size", "ai_choice").strip()
+    size_config = {
+        "brief":     (1500,  "Write a BRIEF 2-4 page PRD. Be concise. Cover only: Executive Summary, Problem, Key Features (top 3), Success Metrics, and Risks. Skip non-essential sections."),
+        "medium":    (4000,  "Write a MEDIUM 10-12 page PRD with all standard sections at moderate depth. Balance completeness with conciseness."),
+        "extensive": (8000,  "Write an EXTENSIVE 18-20 page PRD. Go deep on every section. Include detailed user stories, edge cases, technical specs, and comprehensive risk analysis."),
+        "ai_choice": (8192,  "Write a COMPLETE PRD. Choose depth appropriate for the product complexity. Be thorough but not padded. Stop only when the document is genuinely complete."),
+    }
+    max_tok, size_instruction = size_config.get(prd_size, size_config["ai_choice"])
     prompt = f"""You are an expert product manager. Create a professional Product Requirements Document (PRD).
 
 {format_instructions}
+
+SIZE REQUIREMENT: {size_instruction}
 
 Product Details:
 - Product Name: {product_name}
@@ -399,7 +418,7 @@ Make it detailed, actionable, and ready for engineering teams."""
     try:
         client  = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         message = client.messages.create(
-            model="claude-sonnet-4-6", max_tokens=8192,
+            model="claude-sonnet-4-6", max_tokens=max_tok,
             messages=[{"role": "user", "content": prompt}]
         )
         content = message.content[0].text
@@ -409,8 +428,8 @@ Make it detailed, actionable, and ready for engineering teams."""
     prd_id = str(uuid.uuid4())
     conn   = get_db()
     conn.execute(
-        "INSERT INTO prds (id, user_id, title, content, format_style) VALUES (?,?,?,?,?)",
-        (prd_id, user["id"], product_name, content, format_style)
+        "INSERT INTO prds (id, user_id, title, content, format_style, target_users, key_features, success_metrics, company_stage, additional_context) VALUES (?,?,?,?,?,?,?,?,?,?)",
+        (prd_id, user["id"], product_name, content, format_style, target_users, key_features, success_metrics, company_stage, additional_context)
     )
     conn.execute(
         "UPDATE users SET prds_used_this_month = prds_used_this_month + 1 WHERE id=?",
@@ -474,6 +493,24 @@ async def create_checkout_session(request: Request):
         logger.error(f"Stripe error: {e}")
         return JSONResponse({"error": "Payment setup failed."}, status_code=500)
 
+
+@app.post("/api/create-yearly-checkout-session")
+async def create_yearly_checkout_session(request: Request):
+    user = get_current_user(request)
+    if not user: return JSONResponse({"error": "Not authenticated"}, status_code=401)
+    try:
+        session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=[{"price": STRIPE_YEARLY_PRICE_ID, "quantity": 1}],
+            mode="subscription", customer_email=user["email"],
+            success_url=f"{BASE_URL}/upgrade/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{BASE_URL}/upgrade",
+            metadata={"user_id": user["id"], "plan": "yearly"}
+        )
+        return JSONResponse({"checkout_url": session.url})
+    except Exception as e:
+        logger.error(f"Stripe yearly error: {e}")
+        return JSONResponse({"error": "Payment setup failed."}, status_code=500)
 @app.post("/api/stripe-webhook")
 async def stripe_webhook(request: Request):
     payload    = await request.body()
@@ -489,8 +526,8 @@ async def stripe_webhook(request: Request):
         if user_id:
             conn = get_db()
             conn.execute(
-                "UPDATE users SET plan='pro', stripe_customer_id=?, stripe_subscription_id=? WHERE id=?",
-                (s.get("customer"), s.get("subscription"), user_id)
+                "UPDATE users SET plan=?, stripe_customer_id=?, stripe_subscription_id=? WHERE id=?",
+                (s.get("metadata",{}).get("plan","pro"), s.get("customer"), s.get("subscription"), user_id)
             )
             conn.commit(); conn.close()
     elif event["type"] in ("customer.subscription.deleted", "customer.subscription.paused"):
