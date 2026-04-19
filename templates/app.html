@@ -370,7 +370,7 @@
       btn.textContent = 'Downloading...';
       btn.disabled = true;
       try {
-        const resp = await fetch('/api/download-prd/' + currentPrdId + '/docx');
+        const resp = await fetch('/api/prd/' + currentPrdId + '/download');
         if (!resp.ok) { const d = await resp.json(); throw new Error(d.detail); }
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
@@ -409,10 +409,10 @@
       document.getElementById('loadingState').classList.remove('hidden');
       document.getElementById('prdResult').classList.add('hidden');
       try {
-        const res = await fetch('/api/generate-prd', {
+        const res = await fetch('/api/generate', {
           method: 'POST', headers: {'Content-Type':'application/json'},
           body: JSON.stringify({
-            feature_name: featureName, user_problem: userProblem,
+            product_name: featureName, problem: userProblem,
             target_users: document.getElementById('targetUsers').value.trim(),
             context: document.getElementById('context').value.trim(),
             company_stage: document.getElementById('companyStage').value,
