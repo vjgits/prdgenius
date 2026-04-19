@@ -16,7 +16,7 @@
         <span class="font-bold text-lg text-white">PRDGenius</span>
       </a>
       <h1 class="text-2xl font-bold text-white">Start for free</h1>
-      <p class="text-gray-500 mt-1">1 free PRD/month. Then $20/month for 100 PRDs.</p>
+      <p class="text-gray-500 mt-1">1 free PRD/month. Then $4.99/month for unlimited PRDs.</p>
     </div>
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8">
       <div id="error" class="hidden bg-red-950 border border-red-800 text-red-300 text-sm px-4 py-3 rounded-lg mb-6"></div>
@@ -28,7 +28,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
-          <input type="email" name="email" required placeholder="you@company.com"
+          <input type="email" name="email" required placeholder="you@gmail.com"
             class="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"/>
         </div>
         <div>
@@ -54,11 +54,20 @@
       btn.disabled = true; btn.textContent = 'Creating account...'; err.classList.add('hidden');
       const form = new FormData(e.target);
       try {
-        const res = await fetch('/api/signup', { method: 'POST', headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({name: form.get('name'), email: form.get('email'), password: form.get('password')}) });
+        const res = await fetch('/api/signup', { method: 'POST', body: form });
         const data = await res.json();
-        if (res.ok) { window.location.href = '/app'; }
-        else { throw new Error(data.detail || 'Signup failed'); }
+        if (res.ok) {
+          window.location.href = data.redirect || '/app';
+        } else {
+          let msg = 'Signup failed. Please try again.';
+          if (data.error) msg = data.error;
+          else if (data.detail) {
+            msg = Array.isArray(data.detail)
+              ? data.detail.map(d => d.msg || JSON.stringify(d)).join(', ')
+              : data.detail;
+          }
+          throw new Error(msg);
+        }
       } catch(ex) {
         err.textContent = ex.message; err.classList.remove('hidden');
         btn.disabled = false; btn.textContent = 'Create free account';
