@@ -399,7 +399,7 @@ Make it detailed, actionable, and ready for engineering teams."""
     try:
         client  = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
         message = client.messages.create(
-            model="claude-sonnet-4-6", max_tokens=4096,
+            model="claude-sonnet-4-6", max_tokens=8192,
             messages=[{"role": "user", "content": prompt}]
         )
         content = message.content[0].text
