@@ -229,7 +229,7 @@ async def app_page(request: Request):
         "request": request, "user": user, "prds": prds,
         "last_prd": prds[0] if prds else None,
         "at_limit": at_limit, "limit": get_plan_limit(user),
-        "stripe_pub_key": STRIPE_PUBLISHABLE_KEY
+        "stripe_pub_key": STRIPE_PUBLISHABLE_KEY, "free_limit": FREE_PLAN_LIMIT
     })
 
 @app.get("/upgrade", response_class=HTMLResponse)
@@ -237,7 +237,7 @@ async def upgrade_page(request: Request):
     user = get_current_user(request)
     if not user: return RedirectResponse("/login")
     return templates.TemplateResponse("upgrade.html", {
-        "request": request, "user": user, "stripe_pub_key": STRIPE_PUBLISHABLE_KEY
+        "request": request, "user": user, "stripe_pub_key": STRIPE_PUBLISHABLE_KEY, "free_limit": FREE_PLAN_LIMIT
     })
 
 @app.get("/upgrade/success", response_class=HTMLResponse)
