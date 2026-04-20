@@ -416,24 +416,22 @@ Generate a complete, professional PRD in Markdown format. Include:
 
 Make it detailed, actionable, and ready for engineering teams."""
     try:
-        _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        def _run_generation():
-            _text = ""
-            _msgs = [{"role": "user", "content": prompt}]
-            for _i in range(8):
-                _r = _client.messages.create(
-                    model="claude-sonnet-4-6", max_tokens=8192, messages=_msgs
-                )
-                _text += _r.content[0].text
-                if _r.stop_reason == "end_turn":
-                    break
-                _msgs = [
-                    {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": _text},
-                    {"role": "user", "content": "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."}
-                ]
-            return _text
-        content = await asyncio.to_thread(_run_generation)
+        _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        _text = ""
+        _msgs = [{"role": "user", "content": prompt}]
+        for _i in range(6):
+            _r = await _client.messages.create(
+                model="claude-sonnet-4-6", max_tokens=8192, messages=_msgs
+            )
+            _text += _r.content[0].text
+            if _r.stop_reason == "end_turn":
+                break
+            _msgs = [
+                {"role": "user", "content": prompt},
+                {"role": "assistant", "content": _text},
+                {"role": "user", "content": "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."}
+            ]
+        content = _text
     except Exception as e:
         logger.error(f"Anthropic API error: {e}")
         return JSONResponse({"error": "AI generation failed. Please try again."}, status_code=500)
