@@ -22,7 +22,7 @@ Live at: **[prdgenius.up.railway.app](https://prdgenius.up.railway.app)**
 ## Features
 
 - **AI-Powered PRD Generation** — Claude `claude-sonnet-4-6` produces complete PRDs with user stories, acceptance criteria, success metrics, feature prioritization (P0/P1/P2), technical considerations, timeline, and risk analysis
-- **PRD Size Selector** — Choose Brief (essentials only), Medium (balanced), Extensive (deep & detailed), or AI Choice (model judges depth based on product complexity)
+- **PRD Size Selector** — Choose Brief (essentials only), Medium (balanced), or Extensive (deep & detailed)
 - **3 PRD Formats** — Google Style (full spec), Amazon Working Backwards (Press Release + FAQ), Linear Style (concise)
 - **Edit & Regenerate** — Go back, tweak inputs, and regenerate without starting over
 - **Light / Dark Mode** — Toggle with persistent preference saved to localStorage

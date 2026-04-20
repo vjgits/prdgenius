@@ -386,9 +386,8 @@ async def generate_prd(request: Request):
         "brief":     (2000, 1, "BRIEF depth: Cover Executive Summary, Problem, top 3 Features, Success Metrics, and Risks ONLY. Be concise and stop early. Do NOT pad with extra sections."),
         "medium":    (5000, 2, "MEDIUM depth: Cover all standard PRD sections with clear, actionable detail. Be thorough but efficient."),
         "extensive": (6000, 3, "EXTENSIVE depth: Cover all sections with rich detail — deep user stories, edge cases, technical specs, and comprehensive risk analysis."),
-        "ai_choice": (8000, 4, "Intelligently determine the right depth based on the product complexity described. Simple features warrant a concise PRD; complex platforms need depth. Write exactly as much as the product genuinely requires — no more, no less."),
     }
-    max_tok, max_rounds, size_instruction = size_config.get(prd_size, size_config["ai_choice"])
+    max_tok, max_rounds, size_instruction = size_config.get(prd_size, size_config["medium"])
     word_budget = (max_tok * max_rounds) // 2  # rough words from tokens
     prompt = f"""You are an expert product manager. Create a professional Product Requirements Document (PRD).
 
