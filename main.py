@@ -389,11 +389,14 @@ async def generate_prd(request: Request):
         "ai_choice": (8000, 4, "Intelligently determine the right depth based on the product complexity described. Simple features warrant a concise PRD; complex platforms need depth. Write exactly as much as the product genuinely requires — no more, no less."),
     }
     max_tok, max_rounds, size_instruction = size_config.get(prd_size, size_config["ai_choice"])
+    word_budget = (max_tok * max_rounds) // 2  # rough words from tokens
     prompt = f"""You are an expert product manager. Create a professional Product Requirements Document (PRD).
 
 {format_instructions}
 
 SIZE REQUIREMENT: {size_instruction}
+
+IMPORTANT: You have a budget of approximately {word_budget} words. Plan your sections to fit within this budget. Every section must be complete — do not start a section you cannot finish. End with a proper concluding section.
 
 Product Details:
 - Product Name: {product_name}
@@ -402,7 +405,7 @@ Product Details:
 - Key Features: {key_features or 'Not specified'}
 - Success Metrics: {success_metrics or 'Not specified'}
 
-Generate a complete, professional PRD in Markdown format. Include:
+Generate a complete, professional PRD in Markdown format covering these sections (adjust depth to fit budget):
 1. Executive Summary
 2. Problem Statement & Background
 3. Goals & Success Metrics
@@ -414,7 +417,7 @@ Generate a complete, professional PRD in Markdown format. Include:
 9. Risks & Mitigations
 10. Open Questions
 
-Make it detailed, actionable, and ready for engineering teams."""
+Make it detailed, actionable, and ready for engineering teams. The document MUST be complete with all sections finished."""
     try:
         _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         _text = ""
@@ -426,10 +429,19 @@ Make it detailed, actionable, and ready for engineering teams."""
             _text += _r.content[0].text
             if _r.stop_reason == "end_turn":
                 break
+            # On the last allowed round, force the model to wrap up cleanly
+            is_final_round = (_i == max_rounds - 2)
+            continue_msg = (
+                "You are on your FINAL continuation. Finish any in-progress section concisely, "
+                "then complete all remaining sections (even briefly) and end the PRD properly. "
+                "Do NOT start content you cannot finish. The document must be complete."
+                if is_final_round else
+                "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."
+            )
             _msgs = [
                 {"role": "user", "content": prompt},
                 {"role": "assistant", "content": _text},
-                {"role": "user", "content": "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."}
+                {"role": "user", "content": continue_msg}
             ]
         content = _text
     except Exception as e:
