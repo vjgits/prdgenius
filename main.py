@@ -383,12 +383,12 @@ async def generate_prd(request: Request):
 
     prd_size = data.get("prd_size", "ai_choice").strip()
     size_config = {
-        "brief":     (1500,  "Write a BRIEF 2-4 page PRD. Be concise. Cover only: Executive Summary, Problem, Key Features (top 3), Success Metrics, and Risks. Skip non-essential sections."),
-        "medium":    (4000,  "Write a MEDIUM 10-12 page PRD with all standard sections at moderate depth. Balance completeness with conciseness."),
-        "extensive": (8000,  "Write an EXTENSIVE 18-20 page PRD. Go deep on every section. Include detailed user stories, edge cases, technical specs, and comprehensive risk analysis."),
-        "ai_choice": (8192,  "Write a COMPLETE PRD. Choose depth appropriate for the product complexity. Be thorough but not padded. Stop only when the document is genuinely complete."),
+        "brief":     (2000, 1, "BRIEF depth: Cover Executive Summary, Problem, top 3 Features, Success Metrics, and Risks ONLY. Be concise and stop early. Do NOT pad with extra sections."),
+        "medium":    (5000, 2, "MEDIUM depth: Cover all standard PRD sections with clear, actionable detail. Be thorough but efficient."),
+        "extensive": (6000, 3, "EXTENSIVE depth: Cover all sections with rich detail — deep user stories, edge cases, technical specs, and comprehensive risk analysis."),
+        "ai_choice": (8000, 4, "Intelligently determine the right depth based on the product complexity described. Simple features warrant a concise PRD; complex platforms need depth. Write exactly as much as the product genuinely requires — no more, no less."),
     }
-    max_tok, size_instruction = size_config.get(prd_size, size_config["ai_choice"])
+    max_tok, max_rounds, size_instruction = size_config.get(prd_size, size_config["ai_choice"])
     prompt = f"""You are an expert product manager. Create a professional Product Requirements Document (PRD).
 
 {format_instructions}
@@ -419,9 +419,9 @@ Make it detailed, actionable, and ready for engineering teams."""
         _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         _text = ""
         _msgs = [{"role": "user", "content": prompt}]
-        for _i in range(6):
+        for _i in range(max_rounds):
             _r = await _client.messages.create(
-                model="claude-sonnet-4-6", max_tokens=8192, messages=_msgs
+                model="claude-sonnet-4-6", max_tokens=max_tok, messages=_msgs
             )
             _text += _r.content[0].text
             if _r.stop_reason == "end_turn":
