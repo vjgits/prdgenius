@@ -47,7 +47,10 @@ ALLOWED_EMAIL_DOMAINS = {
 DB_PATH                = os.getenv("DB_PATH", "/data/prd_genius.db")
 PASSWORD_SALT          = os.getenv("PASSWORD_SALT", "prdgenius_s3cur3_s4lt_2024")
 PRODUCTION             = os.getenv("PRODUCTION", "false").lower() == "true"
-FREE_PLAN_LIMIT        = 1
+# Credit system — Brief=3 / Medium=4 / Extensive=6 per PRD
+CREDIT_COST  = {"brief": 3, "medium": 4, "extensive": 6}
+FREE_CREDITS = 6    # 2 Brief / 1 Medium+Brief / 1 Extensive
+PRO_CREDITS  = 120  # 40 Brief / 30 Medium / 20 Extensive
 stripe.api_key         = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET  = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -76,6 +79,8 @@ def init_db():
             stripe_customer_id     TEXT,
             stripe_subscription_id TEXT,
             prds_used_this_month   INTEGER NOT NULL DEFAULT 0,
+            credits_used           INTEGER NOT NULL DEFAULT 0,
+            credits_month          TEXT    NOT NULL DEFAULT '',
             created_at             TEXT NOT NULL DEFAULT (datetime('now'))
         );
         CREATE TABLE IF NOT EXISTS prds (
@@ -98,6 +103,14 @@ def init_db():
     for col in ["target_users","key_features","success_metrics","company_stage","additional_context"]:
         if col not in existing:
             conn.execute(f"ALTER TABLE prds ADD COLUMN {col} TEXT DEFAULT ''")
+    # Migrate users table — add credit columns for existing installs
+    user_cols = [r[1] for r in conn.execute("PRAGMA table_info(users)").fetchall()]
+    for col, defn in [
+        ("credits_used",  "INTEGER NOT NULL DEFAULT 0"),
+        ("credits_month", "TEXT NOT NULL DEFAULT ''"),
+    ]:
+        if col not in user_cols:
+            conn.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
     conn.commit()
     admin_email = "admin@prdgenius.ai"
     admin_pw    = hash_password("Chocolate47##")
@@ -141,10 +154,23 @@ def get_current_user(request: Request) -> Optional[dict]:
     return dict(user) if user else None
 
 # ─── Plan helpers ─────────────────────────────────────────────────────────────
-def get_plan_limit(user: dict) -> int:
+def get_credit_limit(user: dict) -> int:
     if user.get("role") == "admin" or user.get("plan") in ("pro", "admin", "yearly"):
-        return 999999
-    return FREE_PLAN_LIMIT
+        return PRO_CREDITS
+    return FREE_CREDITS
+
+def reset_credits_if_new_month(user: dict, conn) -> dict:
+    """Reset credits_used if we're in a new calendar month. Returns refreshed user dict."""
+    current_month = datetime.utcnow().strftime("%Y-%m")
+    if user.get("credits_month", "") != current_month:
+        conn.execute(
+            "UPDATE users SET credits_used=0, prds_used_this_month=0, credits_month=? WHERE id=?",
+            (current_month, user["id"])
+        )
+        conn.commit()
+        row = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
+        return dict(row) if row else user
+    return user
 
 # ─── Security Middleware ──────────────────────────────────────────────────────
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -224,18 +250,25 @@ async def app_page(request: Request):
     user = get_current_user(request)
     if not user: return RedirectResponse("/login")
     conn = get_db()
+    user = reset_credits_if_new_month(user, conn)
     prds = [dict(p) for p in conn.execute(
         "SELECT * FROM prds WHERE user_id=? ORDER BY created_at DESC LIMIT 20", (user["id"],)
     ).fetchall()]
     conn.close()
-    at_limit = (user["plan"] not in ("pro","admin") and
-                user.get("role") != "admin" and
-                user["prds_used_this_month"] >= FREE_PLAN_LIMIT)
+    credit_limit    = get_credit_limit(user)
+    credits_used    = user.get("credits_used", 0)
+    credits_remaining = max(0, credit_limit - credits_used)
+    at_limit = credits_remaining < 3  # can't afford even a Brief
     return templates.TemplateResponse("app.html", {
         "request": request, "user": user, "prds": prds,
         "last_prd": prds[0] if prds else None,
-        "at_limit": at_limit, "limit": get_plan_limit(user),
-        "stripe_pub_key": STRIPE_PUBLISHABLE_KEY, "free_limit": FREE_PLAN_LIMIT, "pro_limit": 100
+        "at_limit": at_limit,
+        "credit_limit": credit_limit,
+        "credits_used": credits_used,
+        "credits_remaining": credits_remaining,
+        "stripe_pub_key": STRIPE_PUBLISHABLE_KEY,
+        "free_credits": FREE_CREDITS,
+        "pro_credits": PRO_CREDITS,
     })
 
 @app.get("/upgrade", response_class=HTMLResponse)
@@ -243,7 +276,8 @@ async def upgrade_page(request: Request):
     user = get_current_user(request)
     if not user: return RedirectResponse("/login")
     return templates.TemplateResponse("upgrade.html", {
-        "request": request, "user": user, "stripe_pub_key": STRIPE_PUBLISHABLE_KEY, "free_limit": FREE_PLAN_LIMIT, "pro_limit": 100
+        "request": request, "user": user, "stripe_pub_key": STRIPE_PUBLISHABLE_KEY,
+        "free_credits": FREE_CREDITS, "pro_credits": PRO_CREDITS,
     })
 
 @app.get("/upgrade/success", response_class=HTMLResponse)
@@ -339,15 +373,21 @@ async def api_logout(request: Request):
 async def check_limit(request: Request):
     user = get_current_user(request)
     if not user: return JSONResponse({"error": "Not authenticated"}, status_code=401)
-    limit   = get_plan_limit(user)
-    used    = user["prds_used_this_month"]
-    allowed = used < limit
-    plan    = user.get("plan", "free")
-    name    = "Pro" if plan == "pro" else ("Admin" if plan == "admin" else "Free")
+    conn = get_db()
+    user = reset_credits_if_new_month(user, conn)
+    conn.close()
+    credit_limit      = get_credit_limit(user)
+    credits_used      = user.get("credits_used", 0)
+    credits_remaining = max(0, credit_limit - credits_used)
+    plan = user.get("plan", "free")
+    name = "Pro" if plan in ("pro","yearly") else ("Admin" if plan == "admin" else "Free")
     return JSONResponse({
-        "allowed": allowed, "used": used, "limit": limit, "plan": plan,
-        "plan_name": name,
-        "message": f"Monthly limit reached on {name} plan." if not allowed else ""
+        "allowed": credits_remaining >= 3,
+        "credits_used": credits_used,
+        "credit_limit": credit_limit,
+        "credits_remaining": credits_remaining,
+        "plan": plan, "plan_name": name,
+        "message": f"Monthly credit limit reached on {name} plan." if credits_remaining < 3 else ""
     })
 
 @app.post("/api/generate")
@@ -356,13 +396,7 @@ async def generate_prd(request: Request):
     if not user: return JSONResponse({"error": "Not authenticated"}, status_code=401)
     if not check_rate_limit(f"gen:{user['id']}", max_calls=5, window_seconds=60):
         return JSONResponse({"error": "Too many requests. Please wait a moment."}, status_code=429)
-    limit = get_plan_limit(user)
-    if user["prds_used_this_month"] >= limit:
-        plan_name = "Pro" if user["plan"] == "pro" else "Free"
-        return JSONResponse(
-            {"error": f"Monthly limit reached on {plan_name} plan.", "upgrade": True},
-            status_code=403
-        )
+
     data            = await request.json()
     product_name    = data.get("product_name",    "").strip()
     problem         = data.get("problem",          "").strip()
@@ -374,6 +408,33 @@ async def generate_prd(request: Request):
     additional_context = data.get("additional_context", data.get("context", "")).strip()
     if not product_name or not problem:
         return JSONResponse({"error": "Product name and problem statement are required."}, status_code=400)
+
+    prd_size = data.get("prd_size", "medium").strip()
+    if prd_size not in CREDIT_COST:
+        prd_size = "medium"
+    credit_cost = CREDIT_COST[prd_size]
+
+    # Monthly reset + credit check
+    conn = get_db()
+    user = reset_credits_if_new_month(user, conn)
+    conn.close()
+    credit_limit      = get_credit_limit(user)
+    credits_used      = user.get("credits_used", 0)
+    credits_remaining = credit_limit - credits_used
+    if credits_remaining < credit_cost:
+        is_free = user.get("plan", "free") not in ("pro", "admin", "yearly")
+        return JSONResponse(
+            {
+                "error": (
+                    f"Not enough credits. This PRD costs {credit_cost} credits but you only have "
+                    f"{max(0, credits_remaining)} remaining this month. "
+                    f"Pro plan: 120 credits/month — 40 Brief / 30 Medium / 20 Extensive."
+                ),
+                "upgrade": is_free
+            },
+            status_code=403
+        )
+
     format_instructions = {
         "standard":  "Write a comprehensive, well-structured PRD with clear sections.",
         "lean":      "Write a concise lean PRD focusing on essentials only. Keep it brief.",
@@ -381,14 +442,13 @@ async def generate_prd(request: Request):
         "technical": "Write a technical PRD with system requirements and engineering details.",
     }.get(format_style, "Write a comprehensive PRD.")
 
-    prd_size = data.get("prd_size", "ai_choice").strip()
     # Per-section word cap guarantees all 10 sections + TOC fit within token budget
     size_config = {
         "brief":     (2000, 120),  # max_tok, words_per_section
         "medium":    (4000, 250),
         "extensive": (6000, 400),
     }
-    max_tok, words_per_section = size_config.get(prd_size, size_config["medium"])
+    max_tok, words_per_section = size_config[prd_size]
 
     sections_list = """1. Executive Summary
 2. Problem Statement & Background
@@ -459,11 +519,16 @@ Write in Markdown. Be professional, specific, and actionable."""
         (prd_id, user["id"], product_name, content, format_style, target_users, key_features, success_metrics, company_stage, additional_context)
     )
     conn.execute(
-        "UPDATE users SET prds_used_this_month = prds_used_this_month + 1 WHERE id=?",
-        (user["id"],)
+        "UPDATE users SET credits_used = credits_used + ?, prds_used_this_month = prds_used_this_month + 1 WHERE id=?",
+        (credit_cost, user["id"])
     )
     conn.commit(); conn.close()
-    return JSONResponse({"success": True, "prd_id": prd_id, "content": content, "title": product_name})
+    new_remaining = max(0, credits_remaining - credit_cost)
+    return JSONResponse({
+        "success": True, "prd_id": prd_id, "content": content, "title": product_name,
+        "credits_used": credit_cost,
+        "credits_remaining": new_remaining,
+    })
 
 @app.get("/api/prd/{prd_id}")
 async def get_prd(prd_id: str, request: Request):

@@ -27,7 +27,7 @@ Live at: **[prdgenius.up.railway.app](https://prdgenius.up.railway.app)**
 - **Edit & Regenerate** — Go back, tweak inputs, and regenerate without starting over
 - **Light / Dark Mode** — Toggle with persistent preference saved to localStorage
 - **Authentication** — Secure signup/login with session-based auth and bcrypt password hashing
-- **Freemium Model** — Free tier (1 PRD/month), Pro Monthly ($9.99/month), Pro Yearly ($99/year) via Stripe Checkout
+- **Credit-Based Freemium** — Free tier (6 credits/month), Pro Monthly ($9.99/month = 120 credits), Pro Yearly ($99/year = 120 credits/month) via Stripe Checkout. Brief=3cr · Medium=4cr · Extensive=6cr
 - **Download Options** — Export as Word (.docx) or browser PDF
 - **Public Share Links** — Share any PRD via a unique URL
 - **Admin Dashboard** — Real-time stats: total users, MRR, recent PRDs
@@ -140,11 +140,13 @@ prdgenius/
 
 ## Pricing
 
-| Plan | Price | PRDs |
-|------|-------|------|
-| Free | $0 | 1 PRD / month |
-| Pro Monthly | $9.99 / month | 100 PRDs / month |
-| Pro Yearly | $99 / year | 100 PRDs / month |
+Credit-based system: Brief = 3 credits · Medium = 4 credits · Extensive = 6 credits.
+
+| Plan | Price | Credits/month | Effective Limits |
+|------|-------|--------------|-----------------|
+| Free | $0 | 6 credits | ≈ 1–2 PRDs |
+| Pro Monthly | $9.99 / month | 120 credits | 40 Brief · 30 Medium · 20 Extensive |
+| Pro Yearly | $99 / year | 120 credits | 40 Brief · 30 Medium · 20 Extensive |
 
 ---
 

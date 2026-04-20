@@ -45,6 +45,7 @@
     html.light .size-card.active { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; border-color: #6366f1 !important; }
     html.light .size-card.active .size-label,
     html.light .size-card.active .size-desc { color: #fff !important; }
+    html.light .size-card .size-desc[style*="color:#818cf8"] { color: #4f46e5 !important; }
     html.light .border { border-color: #e5e7eb !important; }
     html.light [style*="background:rgba(17,24,39"] { background: #ffffff !important; color: #1f2937 !important; }
     html.light [style*="background:rgba(15,15,30"] { background: #f9fafb !important; }
@@ -140,15 +141,16 @@
     <div class="px-4 pb-3">
       {% if user.plan == 'free' %}
       <div class="rounded-xl p-3 text-xs" style="background:rgba(67,56,202,0.1);border:1px solid rgba(99,102,241,0.2)">
-        <div class="flex justify-between mb-1.5">
+        <div class="flex justify-between mb-1">
           <span class="text-indigo-300 font-medium">Free plan</span>
-          <span class="{{ 'text-red-400 font-semibold' if user.prds_used_this_month >= free_limit else 'text-indigo-300' }}">
-            {{ user.prds_used_this_month }}/{{ free_limit }} PRDs
+          <span class="{{ 'text-red-400 font-semibold' if credits_remaining < 3 else 'text-indigo-300' }}">
+            {{ credits_remaining }}/{{ credit_limit }} credits
           </span>
         </div>
-        <div class="rounded-full h-1.5 mb-3" style="background:rgba(31,41,55,0.8)">
-          <div class="h-1.5 rounded-full" style="width:{{ [user.prds_used_this_month / free_limit * 100, 100]|min }}%;background:{{ 'linear-gradient(90deg,#ef4444,#f87171)' if user.prds_used_this_month >= free_limit else 'linear-gradient(90deg,#6366f1,#8b5cf6)' }}"></div>
+        <div class="rounded-full h-1.5 mb-2" style="background:rgba(31,41,55,0.8)">
+          <div class="h-1.5 rounded-full" style="width:{{ [credits_used / credit_limit * 100, 100]|min }}%;background:{{ 'linear-gradient(90deg,#ef4444,#f87171)' if credits_remaining < 3 else 'linear-gradient(90deg,#6366f1,#8b5cf6)' }}"></div>
         </div>
+        <p class="text-gray-600 mb-2">Brief 3cr · Medium 4cr · Extensive 6cr</p>
         <a href="#" onclick="startUpgrade(event)" class="text-indigo-400 font-semibold hover:text-indigo-300 transition flex items-center gap-1">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
           Upgrade to Pro — $9.99/mo
@@ -156,13 +158,14 @@
       </div>
       {% else %}
       <div class="rounded-xl p-3 text-xs" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35)">
-        <div class="flex justify-between text-indigo-300 mb-1.5 font-medium">
+        <div class="flex justify-between text-indigo-300 mb-1 font-medium">
           <span>✨ Pro Plan</span>
-          <span>{{ user.prds_used_this_month }}/{{ pro_limit }}</span>
+          <span>{{ credits_remaining }}/{{ credit_limit }} cr</span>
         </div>
-        <div class="rounded-full h-1.5" style="background:rgba(67,56,202,0.3)">
-          <div class="h-1.5 rounded-full" style="width:{{ [user.prds_used_this_month / pro_limit * 100, 100]|min }}%;background:linear-gradient(90deg,#818cf8,#a78bfa)"></div>
+        <div class="rounded-full h-1.5 mb-1.5" style="background:rgba(67,56,202,0.3)">
+          <div class="h-1.5 rounded-full" style="width:{{ [credits_used / credit_limit * 100, 100]|min }}%;background:linear-gradient(90deg,#818cf8,#a78bfa)"></div>
         </div>
+        <p class="text-gray-500">≈ {{ (credits_remaining // 6) }} Extensive · {{ (credits_remaining // 4) }} Medium · {{ (credits_remaining // 3) }} Brief left</p>
       </div>
       {% endif %}
     </div>
@@ -215,8 +218,8 @@
       </div>
 
       <div id="limitError" class="hidden rounded-xl px-4 py-3 mb-6 text-sm" style="background:linear-gradient(135deg,#1e1b4b,#1a1333);border:1px solid #4338ca">
-        <p class="text-indigo-200 font-semibold mb-1">You have used your 1 free PRD this month.</p>
-        <a href="#" onclick="startUpgrade(event)" class="text-indigo-400 underline font-semibold hover:text-indigo-300">Upgrade to Pro — Unlimited PRDs for $9.99/month</a>
+        <p class="text-indigo-200 font-semibold mb-1" id="limitErrorMsg">Not enough credits to generate this PRD.</p>
+        <a href="#" onclick="startUpgrade(event)" class="text-indigo-400 underline font-semibold hover:text-indigo-300">Upgrade to Pro — 120 credits/month for $9.99</a>
       </div>
       <div id="genError" class="hidden text-red-300 text-sm px-4 py-3 rounded-xl mb-6" style="background:rgba(127,29,29,0.4);border:1px solid rgba(185,28,28,0.5)"></div>
 
@@ -291,13 +294,22 @@
           <label class="block text-sm font-semibold text-gray-300 mb-2">PRD Size</label>
           <div class="size-selector">
             <div class="size-card" onclick="selectSize('brief')" id="size-brief">
-              <div class="size-icon">&#x1F4C4;</div><div class="size-label">Brief</div><div class="size-desc">Essentials only</div>
+              <div class="size-icon">&#x1F4C4;</div>
+              <div class="size-label">Brief</div>
+              <div class="size-desc">Essentials only</div>
+              <div class="size-desc" style="margin-top:4px;font-size:0.65rem;color:#818cf8;font-weight:600">3 credits</div>
             </div>
             <div class="size-card active" onclick="selectSize('medium')" id="size-medium">
-              <div class="size-icon">&#x1F4CB;</div><div class="size-label">Medium</div><div class="size-desc">Balanced depth</div>
+              <div class="size-icon">&#x1F4CB;</div>
+              <div class="size-label">Medium</div>
+              <div class="size-desc">Balanced depth</div>
+              <div class="size-desc" style="margin-top:4px;font-size:0.65rem;color:rgba(255,255,255,0.7);font-weight:600">4 credits</div>
             </div>
             <div class="size-card" onclick="selectSize('extensive')" id="size-extensive">
-              <div class="size-icon">&#x1F4DA;</div><div class="size-label">Extensive</div><div class="size-desc">Deep &amp; detailed</div>
+              <div class="size-icon">&#x1F4DA;</div>
+              <div class="size-label">Extensive</div>
+              <div class="size-desc">Deep &amp; detailed</div>
+              <div class="size-desc" style="margin-top:4px;font-size:0.65rem;color:#818cf8;font-weight:600">6 credits</div>
             </div>
           </div>
           <input type="hidden" id="prdSize" value="medium">
@@ -318,8 +330,8 @@
         <div class="flex items-start gap-4">
           <div class="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 text-xl" style="background:rgba(99,102,241,0.2)">🔒</div>
           <div class="flex-1">
-            <h3 class="font-bold text-white text-base mb-1">Your free PRD is shown below</h3>
-            <p class="text-indigo-200 text-sm leading-relaxed">You have used your 1 free PRD this month. You can view and download it anytime. To generate new PRDs or enhance this one, upgrade to Pro.</p>
+            <h3 class="font-bold text-white text-base mb-1">You've used all your free credits</h3>
+            <p class="text-indigo-200 text-sm leading-relaxed">Your {{ free_credits }} free credits are used up for this month. You can still view and download your PRD. Upgrade to Pro for 120 credits/month — 40 Brief, 30 Medium, or 20 Extensive PRDs.</p>
             <div class="flex flex-wrap gap-3 mt-4">
               <a href="#" onclick="startUpgrade(event)" class="text-white px-5 py-2.5 rounded-xl font-bold text-sm transition-all"
                 style="background:linear-gradient(135deg,#6366f1,#7c3aed);box-shadow:0 4px 16px rgba(99,102,241,0.35)">
@@ -499,8 +511,15 @@
         });
         const data = await res.json();
         if (!res.ok) {
-          if (res.status === 429) { showGenerator(); limitErr.classList.remove('hidden'); }
-          else { showGenerator(); genErr.textContent = data.detail || 'Generation failed.'; genErr.classList.remove('hidden'); }
+          if (res.status === 403) {
+            showGenerator();
+            document.getElementById('limitErrorMsg').textContent = data.error || 'Not enough credits.';
+            limitErr.classList.remove('hidden');
+          } else if (res.status === 429) {
+            showGenerator(); limitErr.classList.remove('hidden');
+          } else {
+            showGenerator(); genErr.textContent = data.error || data.detail || 'Generation failed.'; genErr.classList.remove('hidden');
+          }
           return;
         }
         rawMarkdown = data.content;
