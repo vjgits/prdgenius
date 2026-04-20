@@ -383,19 +383,18 @@ async def generate_prd(request: Request):
 
     prd_size = data.get("prd_size", "ai_choice").strip()
     size_config = {
-        "brief":     (2000, 1, "BRIEF depth: Cover Executive Summary, Problem, top 3 Features, Success Metrics, and Risks ONLY. Be concise and stop early. Do NOT pad with extra sections."),
-        "medium":    (5000, 2, "MEDIUM depth: Cover all standard PRD sections with clear, actionable detail. Be thorough but efficient."),
-        "extensive": (6000, 3, "EXTENSIVE depth: Cover all sections with rich detail — deep user stories, edge cases, technical specs, and comprehensive risk analysis."),
+        "brief":     (2000, "BRIEF: Cover only Executive Summary, Problem Statement, top 3 Features, Success Metrics, and Risks. Be concise. You MUST complete all 5 sections within your token limit."),
+        "medium":    (4000, "MEDIUM: Cover all 10 standard PRD sections with clear, actionable detail. You MUST complete all 10 sections within your token limit."),
+        "extensive": (6000, "EXTENSIVE: Cover all 10 sections with rich depth — detailed user stories, edge cases, technical specs, and comprehensive risk analysis. You MUST complete all 10 sections within your token limit."),
     }
-    max_tok, max_rounds, size_instruction = size_config.get(prd_size, size_config["medium"])
-    word_budget = (max_tok * max_rounds) // 2  # rough words from tokens
+    max_tok, size_instruction = size_config.get(prd_size, size_config["medium"])
     prompt = f"""You are an expert product manager. Create a professional Product Requirements Document (PRD).
 
 {format_instructions}
 
 SIZE REQUIREMENT: {size_instruction}
 
-IMPORTANT: You have a budget of approximately {word_budget} words. Plan your sections to fit within this budget. Every section must be complete — do not start a section you cannot finish. End with a proper concluding section.
+CRITICAL: You must complete ALL sections within a single response. Do not truncate. Every section must have a proper ending. Write efficiently to fit everything in.
 
 Product Details:
 - Product Name: {product_name}
@@ -404,7 +403,7 @@ Product Details:
 - Key Features: {key_features or 'Not specified'}
 - Success Metrics: {success_metrics or 'Not specified'}
 
-Generate a complete, professional PRD in Markdown format covering these sections (adjust depth to fit budget):
+Generate a complete PRD in Markdown format with all of these sections:
 1. Executive Summary
 2. Problem Statement & Background
 3. Goals & Success Metrics
@@ -416,33 +415,14 @@ Generate a complete, professional PRD in Markdown format covering these sections
 9. Risks & Mitigations
 10. Open Questions
 
-Make it detailed, actionable, and ready for engineering teams. The document MUST be complete with all sections finished."""
+Make it detailed, actionable, and ready for engineering teams."""
     try:
         _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
-        _text = ""
-        _msgs = [{"role": "user", "content": prompt}]
-        for _i in range(max_rounds):
-            _r = await _client.messages.create(
-                model="claude-sonnet-4-6", max_tokens=max_tok, messages=_msgs
-            )
-            _text += _r.content[0].text
-            if _r.stop_reason == "end_turn":
-                break
-            # On the last allowed round, force the model to wrap up cleanly
-            is_final_round = (_i == max_rounds - 2)
-            continue_msg = (
-                "You are on your FINAL continuation. Finish any in-progress section concisely, "
-                "then complete all remaining sections (even briefly) and end the PRD properly. "
-                "Do NOT start content you cannot finish. The document must be complete."
-                if is_final_round else
-                "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."
-            )
-            _msgs = [
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": _text},
-                {"role": "user", "content": continue_msg}
-            ]
-        content = _text
+        _r = await _client.messages.create(
+            model="claude-sonnet-4-6", max_tokens=max_tok,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        content = _r.content[0].text
     except Exception as e:
         logger.error(f"Anthropic API error: {e}")
         return JSONResponse({"error": "AI generation failed. Please try again."}, status_code=500)
