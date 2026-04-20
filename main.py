@@ -1,7 +1,7 @@
 """
 PRDGenius – production FastAPI back-end
 """
-import io, os, re, uuid, json, hashlib, sqlite3, logging
+import io, os, re, uuid, json, hashlib, sqlite3, logging, asyncio
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional
@@ -371,7 +371,7 @@ async def generate_prd(request: Request):
     success_metrics = data.get("success_metrics",  "").strip()
     format_style       = data.get("format_style",      "standard").strip()
     company_stage      = data.get("company_stage",     "").strip()
-    additional_context = data.get("additional_context","").strip()
+    additional_context = data.get("additional_context", data.get("context", "")).strip()
     if not product_name or not problem:
         return JSONResponse({"error": "Product name and problem statement are required."}, status_code=400)
     format_instructions = {
@@ -416,26 +416,24 @@ Generate a complete, professional PRD in Markdown format. Include:
 
 Make it detailed, actionable, and ready for engineering teams."""
     try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        # Continuation loop — keeps generating until the model signals end_turn
-        full_text = ""
-        api_messages = [{"role": "user", "content": prompt}]
-        for _attempt in range(8):  # up to 8 rounds × 8192 tokens each
-            resp = client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=8192,
-                messages=api_messages
-            )
-            full_text += resp.content[0].text
-            if resp.stop_reason == "end_turn":
-                break
-            # Hit token limit — continue seamlessly from where we left off
-            api_messages = [
-                {"role": "user", "content": prompt},
-                {"role": "assistant", "content": full_text},
-                {"role": "user", "content": "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."}
-            ]
-        content = full_text
+        _client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        def _run_generation():
+            _text = ""
+            _msgs = [{"role": "user", "content": prompt}]
+            for _i in range(8):
+                _r = _client.messages.create(
+                    model="claude-sonnet-4-6", max_tokens=8192, messages=_msgs
+                )
+                _text += _r.content[0].text
+                if _r.stop_reason == "end_turn":
+                    break
+                _msgs = [
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": _text},
+                    {"role": "user", "content": "Continue the PRD exactly where you left off. Do NOT repeat any content already written. Resume seamlessly from the last word."}
+                ]
+            return _text
+        content = await asyncio.to_thread(_run_generation)
     except Exception as e:
         logger.error(f"Anthropic API error: {e}")
         return JSONResponse({"error": "AI generation failed. Please try again."}, status_code=500)

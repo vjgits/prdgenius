@@ -25,6 +25,39 @@
     .theme-toggle:hover { transform:scale(1.1); }
 
 
+
+    /* Light mode — comprehensive overrides */
+    html.light textarea,
+    html.light select,
+    html.light input:not([type="hidden"]) {
+      background: #ffffff !important; color: #1f2937 !important;
+      border-color: #d1d5db !important;
+    }
+    html.light textarea::placeholder,
+    html.light input::placeholder { color: #9ca3af !important; }
+    html.light p, html.light label { color: #374151 !important; }
+    html.light h1, html.light h2, html.light h3 { color: #111827 !important; }
+    html.light .text-gray-600 { color: #6b7280 !important; }
+    html.light .text-xs { color: #6b7280 !important; }
+    html.light .size-card { background: #f3f4f6 !important; border-color: #d1d5db !important; }
+    html.light .size-card .size-label { color: #1f2937 !important; }
+    html.light .size-card .size-desc { color: #6b7280 !important; }
+    html.light .size-card.active { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; border-color: #6366f1 !important; }
+    html.light .size-card.active .size-label,
+    html.light .size-card.active .size-desc { color: #fff !important; }
+    html.light .border { border-color: #e5e7eb !important; }
+    html.light [style*="background:rgba(17,24,39"] { background: #ffffff !important; color: #1f2937 !important; }
+    html.light [style*="background:rgba(15,15,30"] { background: #f9fafb !important; }
+    html.light .prd-output h1 { color: #111827 !important; border-color: #6366f1 !important; }
+    html.light .prd-output h2 { color: #1f2937 !important; background: linear-gradient(90deg,rgba(99,102,241,0.1),transparent) !important; }
+    html.light .prd-output h3 { color: #374151 !important; }
+    html.light .prd-output p,
+    html.light .prd-output li { color: #374151 !important; }
+    html.light .prd-output strong { color: #111827 !important; }
+    html.light .prd-output td { color: #374151 !important; border-color: #e5e7eb !important; }
+    html.light .prd-output tr:nth-child(even) td { background: rgba(99,102,241,0.06) !important; }
+    html.light .theme-toggle { background: #f3f4f6 !important; border-color: #d1d5db !important; }
+
     /* PRD Size Selector */
     .size-selector { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
     .size-card { flex:1; min-width:100px; padding:12px 8px; border:2px solid #374151;
