@@ -466,6 +466,147 @@ async def generate_prd(request: Request):
             "performance requirements, security considerations, and rollback plan. Written for the "
             "engineering team building it — not the stakeholders approving it."
         ),
+        # ── Company styles ────────────────────────────────────────────────────
+        "apple": (
+            "Write an Apple-style PRD. Design and simplicity are the highest-order requirements — "
+            "if the user experience needs a manual, you have failed. Describe experiences, not feature "
+            "lists. Every requirement must answer: 'Is this magical? Is this the simplest it can be?' "
+            "Apply Steve Jobs's 'say no to a thousand things' principle: cut ruthlessly. Hardware-"
+            "software integration, privacy by default, and ecosystem coherence are non-negotiable."
+        ),
+        "microsoft": (
+            "Write a Microsoft-style PRD. Enterprise-grade reliability, backward compatibility, and "
+            "accessibility (WCAG 2.1 AA minimum) are first-class requirements. Address IT admin "
+            "control, security and compliance (SOC2, ISO 27001), and integration with the Microsoft "
+            "365 / Azure / Teams ecosystem. Quantify success with enterprise adoption metrics, NPS "
+            "from both end users and IT admins, and power-user efficiency gains."
+        ),
+        "meta": (
+            "Write a Meta-style PRD. Every requirement must leverage the social graph and drive "
+            "network effects. Frame success metrics around DAU, MAU, engagement rate, and social "
+            "sharing velocity — not just usage. A/B testing plan is mandatory: nothing ships without "
+            "a statistically valid experiment design. Optimise for time-to-first-social-interaction "
+            "and viral coefficient. Address News Feed / algorithmic distribution implications."
+        ),
+        "nvidia": (
+            "Write an NVIDIA-style PRD. Lead with hard performance specifications: throughput "
+            "(tokens/s, TFLOPS), latency (P50/P99), memory bandwidth, and power envelope. Frame "
+            "requirements around the CUDA and developer toolchain ecosystem. Address hardware-software "
+            "co-design constraints and include benchmark comparisons against competitive solutions. "
+            "Developer experience and SDK ergonomics are as important as raw performance."
+        ),
+        "openai": (
+            "Write an OpenAI-style PRD. Pair every capability requirement with a corresponding safety "
+            "and evaluation requirement — they carry equal weight. Include red-teaming criteria, "
+            "misuse vector analysis, and model evaluation benchmarks. Address responsible deployment "
+            "milestones and staged rollout gates. Frame success as capability × safety, not capability "
+            "alone. Define what 'ready to ship' means from both a product and safety standpoint."
+        ),
+        "anthropic": (
+            "Write an Anthropic-style PRD grounded in Constitutional AI principles. The safety case "
+            "must be as developed as the product case — this is non-negotiable. Every feature must "
+            "include a harmlessness assessment, an honesty evaluation, and a helpfulness measure. "
+            "Address responsible scaling policy implications and include evaluation criteria for both "
+            "capability and alignment. Pair ambition with epistemic humility: be explicit about what "
+            "you do not yet know."
+        ),
+        "tesla": (
+            "Write a Tesla-style PRD using Elon Musk's 5-step engineering process: (1) Challenge "
+            "every requirement — if you can't question it, you can't delete it. (2) Delete any part, "
+            "process, or spec that can be removed — you can always add back. (3) Simplify and "
+            "optimise only after deleting. (4) Accelerate cycle time. (5) Automate. Requirements must "
+            "be OTA-deliverable, vertically integrated, and justified by physics, not convention. "
+            "Include a COGS target alongside the feature requirements."
+        ),
+        "mercedes": (
+            "Write a Mercedes-Benz-style PRD. Premium quality and German engineering precision define "
+            "every requirement. Safety standards (ISO 26262 ASIL rating for automotive, GDPR for "
+            "data) are non-negotiable. User experience must reflect the luxury segment: every "
+            "interaction crafted, not engineered. Include quality validation gates, homologation "
+            "requirements, and long-term reliability KPIs alongside functional requirements. "
+            "Durability and brand coherence carry as much weight as new capabilities."
+        ),
+        "honda": (
+            "Write a Honda-style PRD using The Honda Way. Apply kaizen (continuous improvement) "
+            "thinking: frame requirements as disciplined improvements to a proven, reliable baseline. "
+            "Manufacturing feasibility and total cost of ownership are first-class inputs — involve "
+            "manufacturing in the design phase, not after. Include quality standards (defect rate "
+            "targets), serviceability requirements, and global regulatory compliance across key "
+            "markets. Reliability over novelty."
+        ),
+        "elililly": (
+            "Write an Eli Lilly-style PRD for a regulated healthcare product. All requirements must "
+            "align with FDA 21 CFR and ICH E6 guidelines. Structure around clinical evidence: define "
+            "primary and secondary endpoints, safety profile thresholds, and pharmacovigilance "
+            "obligations. Include health economics framing (QALY, cost-effectiveness). Patient "
+            "outcomes are the north star — every feature must trace back to a measurable impact on "
+            "patient health or care team efficiency. Regulatory strategy is a requirement, not an "
+            "afterthought."
+        ),
+        "novartis": (
+            "Write a Novartis-style PRD grounded in patient-centricity and clinical evidence. Lead "
+            "with the unmet medical need and the clinical development rationale. Address regulatory "
+            "strategy across FDA, EMA, and PMDA pathways. Include pharmacovigilance obligations, "
+            "medical affairs input, and real-world evidence strategy. Frame success metrics around "
+            "clinical outcomes, patient quality of life (PRO instruments), and market access "
+            "criteria. Every product decision must withstand scientific and regulatory scrutiny."
+        ),
+        "exxon": (
+            "Write an ExxonMobil-style PRD for an energy sector product. Operational safety (Process "
+            "Safety Management per OSHA 1910.119) is the highest priority requirement — no exceptions. "
+            "Include a comprehensive HSE (Health, Safety, Environment) impact assessment. Address "
+            "regulatory compliance (EPA, FERC), CAPEX/OPEX analysis, and upstream/downstream "
+            "integration implications. Frame success in terms of operational efficiency gains, "
+            "emissions reduction, and long-term asset value. ESG reporting alignment is mandatory."
+        ),
+        "chevron": (
+            "Write a Chevron-style PRD. Operational safety and Process Safety Management (PSM) "
+            "standards take absolute precedence. Address environmental stewardship requirements, "
+            "energy transition alignment (net-zero roadmap), and ESG impact measurement. Include "
+            "CAPEX/OPEX analysis, regulatory compliance (EPA, state regulators), and supply chain "
+            "resilience considerations. Success metrics must include safety KPIs (TRIR, process "
+            "safety events), environmental performance indicators, and financial returns."
+        ),
+        "maersk": (
+            "Write a MAERSK-style PRD for a global logistics and supply chain product. Focus on "
+            "supply chain resilience, end-to-end visibility, and decarbonisation targets (net-zero "
+            "2040 commitment). Requirements must address multi-modal transport integration (ocean, "
+            "inland, air), real-time tracking and exception management, and trade lane economics. "
+            "Digital transformation of physical logistics is the core theme. Include sustainability "
+            "metrics (CO2 per TEU-km) alongside operational KPIs."
+        ),
+        "jpmorgan": (
+            "Write a JPMorgan Chase-style PRD. Regulatory compliance (Basel III, Dodd-Frank, MiFID "
+            "II, GDPR) is a first-class product requirement, not a legal afterthought. Every feature "
+            "must include a risk assessment, full audit trail specification, financial controls "
+            "design, and model risk management consideration where applicable. Frame success metrics "
+            "around risk-adjusted returns, compliance adherence rates, and operational resilience "
+            "targets. Security and fraud prevention are requirements, not features."
+        ),
+        "visa": (
+            "Write a Visa-style PRD for a global payments product. Five-nines (99.999%) availability "
+            "and sub-100ms authorisation latency are baseline requirements, not stretch goals. "
+            "Address fraud detection and prevention at global scale, PCI-DSS and PSD2 compliance, "
+            "and tokenisation architecture. Frame success metrics around authorisation rate, fraud "
+            "basis points, and merchant/cardholder acceptance. Global regulatory variation (EMV, "
+            "local payment schemes) must be addressed per region."
+        ),
+        "spacex": (
+            "Write a SpaceX-style PRD using first-principles thinking. Question every physical and "
+            "cost constraint from the ground up — industry convention is not a valid requirement "
+            "source. Justify requirements by physics and economics, not precedent. Include aggressive "
+            "cost-per-unit targets, full or partial reusability requirements, and iteration cycle "
+            "time goals. 'Faster than expected' is a success criterion. Address reliability and "
+            "safety with FMEA discipline, but never let safety theatre slow rational progress."
+        ),
+        "boeing": (
+            "Write a Boeing-style PRD for an aerospace or defence product. Safety-critical "
+            "requirements are absolute and must reference FAA/EASA airworthiness standards. Assign "
+            "DO-178C software criticality levels (DAL A–E) for all software components. Include "
+            "system redundancy architecture, FMEA (Failure Mode and Effects Analysis) summary, and "
+            "design assurance requirements. Certification timeline is a product requirement. "
+            "Traceability from requirement to test case is mandatory."
+        ),
         # legacy aliases kept for backwards compat
         "standard":  "Write a comprehensive, well-structured PRD with clear sections.",
         "lean":      "Write a concise lean PRD focusing on essentials only.",

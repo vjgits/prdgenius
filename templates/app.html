@@ -76,7 +76,7 @@
     .size-label { font-weight:700; font-size:0.85rem; }
     .size-desc { font-size:0.7rem; color:#6b7280; margin-top:2px; }
 
-    /* Format card grid with tooltips */
+    /* Format card grid */
     .fmt-card { position:relative; border:2px solid #374151; border-radius:12px; padding:11px 10px 10px;
       cursor:pointer; transition:all 0.2s; background:rgba(17,24,39,0.6); }
     .fmt-card:hover { border-color:#6366f1; background:rgba(99,102,241,0.07); }
@@ -85,18 +85,25 @@
     .fmt-icon { font-size:1.25rem; margin-bottom:3px; line-height:1; }
     .fmt-name { font-weight:700; font-size:0.78rem; color:#e2e8f0; line-height:1.2; }
     .fmt-sub  { font-size:0.65rem; color:#6b7280; margin-top:2px; line-height:1.3; }
-    /* Tooltip */
-    .fmt-tip  { position:absolute; top:7px; right:8px; width:15px; height:15px; border-radius:50%;
+    /* Tooltip trigger badge */
+    .fmt-tip { position:absolute; top:7px; right:8px; width:15px; height:15px; border-radius:50%;
       border:1px solid #4b5563; color:#6b7280; font-size:0.6rem; display:flex; align-items:center;
-      justify-content:center; cursor:help; flex-shrink:0; }
+      justify-content:center; cursor:help; }
     .fmt-tip:hover { border-color:#818cf8; color:#818cf8; }
-    .fmt-tip-box { display:none; position:absolute; top:22px; right:-4px; width:210px;
-      background:#1a1f2e; border:1px solid #374151; border-radius:10px; padding:10px 12px;
-      font-size:0.71rem; color:#9ca3af; line-height:1.55; z-index:500;
-      box-shadow:0 8px 28px rgba(0,0,0,0.6); pointer-events:none; }
-    .fmt-card:nth-child(3n) .fmt-tip-box,
-    .fmt-card:nth-child(3n-1) .fmt-tip-box { right:auto; left:-4px; }
-    .fmt-tip:hover .fmt-tip-box { display:block; }
+    /* Global floating tooltip — injected at body level by JS, always above everything */
+    #globalTip { display:none; position:fixed; z-index:99999; max-width:230px; pointer-events:none;
+      background:#1a1f2e; border:1px solid #4b5563; border-radius:10px; padding:10px 13px;
+      font-size:0.72rem; color:#9ca3af; line-height:1.55; box-shadow:0 12px 32px rgba(0,0,0,0.7); }
+    /* Company select */
+    .company-select { width:100%; border:2px solid #374151; border-radius:12px; padding:10px 14px;
+      color:#e2e8f0; font-size:0.85rem; background:#111827; cursor:pointer; outline:none;
+      transition:border-color 0.2s; appearance:none;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 14px center; }
+    .company-select:hover,.company-select:focus { border-color:#6366f1; }
+    .company-select.has-value { border-color:#6366f1; background-color:rgba(99,102,241,0.08); }
+    .fmt-section-label { font-size:0.68rem; font-weight:700; color:#6b7280; text-transform:uppercase;
+      letter-spacing:0.08em; margin-bottom:8px; margin-top:16px; }
 
     /* Streaming cursor */
     .stream-cursor { display:inline-block; width:2px; height:1em; background:#6366f1;
@@ -258,45 +265,88 @@
       <form id="prdForm" class="space-y-5">
         <div>
           <label class="block text-sm font-semibold text-gray-300 mb-2">PRD Format <span class="text-gray-600 font-normal text-xs">(hover ⓘ for details)</span></label>
+
+          <!-- By Company Dropdown -->
+          <div class="fmt-section-label" style="margin-top:0">By Company Style</div>
+          <div style="position:relative">
+            <select id="companyFormat" class="company-select" onchange="selectCompanyFormat(this.value)">
+              <option value="">— Pick a company's PRD style —</option>
+              <optgroup label="🖥 Technology">
+                <option value="apple">Apple — Simplicity-first, design-led</option>
+                <option value="microsoft">Microsoft — Enterprise-grade, scalable</option>
+                <option value="nvidia">NVIDIA — Performance & hardware-aware</option>
+                <option value="meta">Meta — Growth & social systems</option>
+                <option value="openai">OpenAI — Research-to-product, safety-aware</option>
+                <option value="anthropic">Anthropic — Responsible AI, safety-first</option>
+              </optgroup>
+              <optgroup label="🚗 Automotive">
+                <option value="tesla">Tesla — Software-defined, rapid iteration</option>
+                <option value="mercedes">Mercedes — Luxury UX, precision engineering</option>
+                <option value="honda">Honda — Reliability, global-scale manufacturing</option>
+              </optgroup>
+              <optgroup label="💊 Pharmaceutical">
+                <option value="elililly">Eli Lilly — Clinical outcomes, patient-centric</option>
+                <option value="novartis">Novartis — Data-driven drug development</option>
+              </optgroup>
+              <optgroup label="⚡ Energy">
+                <option value="exxon">ExxonMobil — Operations at scale, risk-managed</option>
+                <option value="chevron">Chevron — Capital projects, sustainability</option>
+              </optgroup>
+              <optgroup label="🏦 Finance">
+                <option value="jpmorgan">JPMorgan Chase — Risk-first, compliance-aware</option>
+                <option value="visa">Visa — Global payments, latency-critical</option>
+              </optgroup>
+              <optgroup label="🚢 Logistics">
+                <option value="maersk">Maersk — Global supply chain, operational</option>
+              </optgroup>
+              <optgroup label="🚀 Aerospace">
+                <option value="spacex">SpaceX — Move fast, reusable systems</option>
+                <option value="boeing">Boeing — Safety-critical, regulatory-compliant</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- By Methodology / Style -->
+          <div class="fmt-section-label">By Methodology / Style</div>
           <div class="grid grid-cols-3 gap-2">
 
             <div class="fmt-card active" data-format="google" onclick="selectFormat('google')">
-              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">The gold standard for product teams at scale. Full 10-section spec covering goals, personas, P0/P1/P2 requirements, success metrics, technical tradeoffs, and launch plan. Used at Google, Meta, and Microsoft.</div></div>
+              <span class="fmt-tip" data-tip="The gold standard for product teams at scale. Full 10-section spec covering goals, personas, P0/P1/P2 requirements, success metrics, technical tradeoffs, and launch plan. Used at Google, Meta, and Microsoft.">ⓘ</span>
               <div class="fmt-icon">🏢</div>
               <div class="fmt-name">Google Style</div>
               <div class="fmt-sub">Full spec · comprehensive</div>
             </div>
 
             <div class="fmt-card" data-format="amazon" onclick="selectFormat('amazon')">
-              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Invented at Amazon. Write the customer Press Release first, then work backwards to requirements. Forces extreme clarity on the outcome before anyone writes code. Legendary for killing bad ideas early.</div></div>
+              <span class="fmt-tip" data-tip="Invented at Amazon. Write the customer Press Release first, then work backwards to requirements. Forces extreme clarity on the outcome before anyone writes code. Legendary for killing bad ideas early.">ⓘ</span>
               <div class="fmt-icon">📦</div>
               <div class="fmt-name">Amazon WB</div>
               <div class="fmt-sub">Press Release first</div>
             </div>
 
             <div class="fmt-card" data-format="linear" onclick="selectFormat('linear')">
-              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Built for engineering velocity. Concise, ticket-structured format with clear problem, solution, and acceptance criteria. Engineers can start building immediately. No fluff, no filler.</div></div>
+              <span class="fmt-tip" data-tip="Built for engineering velocity. Concise, ticket-structured format with clear problem, solution, and acceptance criteria. Engineers can start building immediately. No fluff, no filler.">ⓘ</span>
               <div class="fmt-icon">⚡</div>
               <div class="fmt-name">Linear Style</div>
               <div class="fmt-sub">Agile · sprint-ready</div>
             </div>
 
             <div class="fmt-card" data-format="jtbd" onclick="selectFormat('jtbd')">
-              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Every requirement anchored to the job a user is trying to get done — not a feature list. Framework by Clayton Christensen. Keeps teams obsessed with outcomes, not outputs. Great for user-research-driven teams.</div></div>
+              <span class="fmt-tip" data-tip="Every requirement anchored to the job a user is trying to get done — not a feature list. Framework by Clayton Christensen. Keeps teams obsessed with outcomes, not outputs. Great for user-research-driven teams.">ⓘ</span>
               <div class="fmt-icon">🎯</div>
               <div class="fmt-name">Jobs-to-be-Done</div>
               <div class="fmt-sub">Outcome-first</div>
             </div>
 
             <div class="fmt-card" data-format="hypothesis" onclick="selectFormat('hypothesis')">
-              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Treat every feature as a testable bet. Requirements written as hypotheses with explicit success signals. Makes assumptions visible. Perfect for early-stage or experimental features where you're still learning what works.</div></div>
+              <span class="fmt-tip" data-tip="Treat every feature as a testable bet. Requirements written as hypotheses with explicit success signals. Makes assumptions visible. Perfect for early-stage or experimental features where you're still learning what works.">ⓘ</span>
               <div class="fmt-icon">🔬</div>
               <div class="fmt-name">Lean Hypothesis</div>
               <div class="fmt-sub">Assumption-driven</div>
             </div>
 
             <div class="fmt-card" data-format="rfc" onclick="selectFormat('rfc')">
-              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Engineering-first spec used at Stripe, Notion, and Discord. Deep on system design, API contracts, data models, performance requirements, and technical tradeoffs. Written for the team building it, not the stakeholders approving it.</div></div>
+              <span class="fmt-tip" data-tip="Engineering-first spec used at Stripe, Notion, and Discord. Deep on system design, API contracts, data models, performance requirements, and technical tradeoffs. Written for the team building it, not the stakeholders approving it.">ⓘ</span>
               <div class="fmt-icon">⚙️</div>
               <div class="fmt-name">Technical RFC</div>
               <div class="fmt-sub">Engineering-first</div>
@@ -479,6 +529,19 @@
     function selectFormat(fmt) {
       document.getElementById('selectedFormat').value = fmt;
       document.querySelectorAll('.fmt-card').forEach(c => c.classList.toggle('active', c.dataset.format === fmt));
+      // Reset company dropdown
+      const cd = document.getElementById('companyFormat');
+      if (cd) { cd.value = ''; cd.classList.remove('has-value'); }
+    }
+
+    function selectCompanyFormat(val) {
+      if (!val) return;
+      document.getElementById('selectedFormat').value = val;
+      // Clear methodology card highlights
+      document.querySelectorAll('.fmt-card').forEach(c => c.classList.remove('active'));
+      // Mark dropdown as having a value
+      const cd = document.getElementById('companyFormat');
+      if (cd) cd.classList.toggle('has-value', !!val);
     }
 
     function showGenerator() {
@@ -665,6 +728,60 @@
       var card=document.getElementById('size-'+size); if(card) card.classList.add('active');
       document.getElementById('prdSize').value=size;
     }
+
+    // ── Global tooltip for .fmt-tip badges ──
+    (function() {
+      const tip = document.createElement('div');
+      tip.id = 'globalTip';
+      document.body.appendChild(tip);
+
+      const GAP = 8; // px gap from trigger
+
+      function showTip(trigger) {
+        const text = trigger.getAttribute('data-tip');
+        if (!text) return;
+        tip.textContent = text;
+        tip.style.display = 'block';
+        positionTip(trigger);
+      }
+
+      function positionTip(trigger) {
+        const r = trigger.getBoundingClientRect();
+        const tw = tip.offsetWidth;
+        const th = tip.offsetHeight;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+
+        // Try to appear above the trigger, centred
+        let left = r.left + r.width / 2 - tw / 2;
+        let top  = r.top - th - GAP;
+
+        // Flip below if not enough room above
+        if (top < 8) top = r.bottom + GAP;
+
+        // Clamp horizontally
+        left = Math.max(8, Math.min(left, vw - tw - 8));
+        // Clamp vertically
+        top  = Math.max(8, Math.min(top,  vh - th - 8));
+
+        tip.style.left = left + 'px';
+        tip.style.top  = top  + 'px';
+      }
+
+      function hideTip() { tip.style.display = 'none'; }
+
+      document.addEventListener('mouseover', function(e) {
+        const trigger = e.target.closest('.fmt-tip');
+        if (trigger) showTip(trigger);
+      });
+      document.addEventListener('mouseout', function(e) {
+        const trigger = e.target.closest('.fmt-tip');
+        if (trigger) hideTip();
+      });
+      // Hide on scroll/resize
+      window.addEventListener('scroll', hideTip, true);
+      window.addEventListener('resize', hideTip);
+    })();
     </script>
   <button class="theme-toggle no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
 </body>
