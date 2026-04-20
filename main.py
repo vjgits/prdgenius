@@ -394,7 +394,10 @@ async def generate_prd(request: Request):
 
 SIZE REQUIREMENT: {size_instruction}
 
-CRITICAL: You must complete ALL sections within a single response. Do not truncate. Every section must have a proper ending. Write efficiently to fit everything in.
+ABSOLUTE RULES — follow these without exception:
+1. COMPLETENESS OVER DEPTH: Every section below MUST appear and MUST be finished. If you are running low on space, shorten or summarise sections — but never omit or leave one incomplete. A section with 2 bullet points is far better than a missing section.
+2. MONITOR YOUR PROGRESS: After each section, mentally check how many sections remain and how much space you have left. If behind, write more briefly going forward.
+3. END PROPERLY: The document must conclude with a finished "Open Questions" section. Do not stop mid-sentence or mid-section under any circumstances.
 
 Product Details:
 - Product Name: {product_name}
@@ -403,7 +406,7 @@ Product Details:
 - Key Features: {key_features or 'Not specified'}
 - Success Metrics: {success_metrics or 'Not specified'}
 
-Generate a complete PRD in Markdown format with all of these sections:
+Generate a complete PRD in Markdown format. You MUST include ALL 10 sections — shorten any section if needed, but never skip one:
 1. Executive Summary
 2. Problem Statement & Background
 3. Goals & Success Metrics
@@ -415,14 +418,32 @@ Generate a complete PRD in Markdown format with all of these sections:
 9. Risks & Mitigations
 10. Open Questions
 
-Make it detailed, actionable, and ready for engineering teams."""
+Make it actionable and ready for engineering teams."""
     try:
         _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+        # Round 1: main generation
         _r = await _client.messages.create(
             model="claude-sonnet-4-6", max_tokens=max_tok,
             messages=[{"role": "user", "content": prompt}]
         )
         content = _r.content[0].text
+        # Round 2 (only if round 1 hit the token limit): wrap up remaining sections
+        if _r.stop_reason == "max_tokens":
+            _r2 = await _client.messages.create(
+                model="claude-sonnet-4-6", max_tokens=1500,
+                messages=[
+                    {"role": "user", "content": prompt},
+                    {"role": "assistant", "content": content},
+                    {"role": "user", "content": (
+                        "The document was cut off. You have 1500 tokens to finish it. "
+                        "Identify every section from the required list that is missing or incomplete. "
+                        "Write each remaining section — condense aggressively if needed, even 2-3 bullet points per section is fine. "
+                        "COMPLETENESS IS MANDATORY: every missing section must appear and be finished. "
+                        "Do NOT repeat anything already written. End with a completed Open Questions section."
+                    )}
+                ]
+            )
+            content += _r2.content[0].text
     except Exception as e:
         logger.error(f"Anthropic API error: {e}")
         return JSONResponse({"error": "AI generation failed. Please try again."}, status_code=500)
