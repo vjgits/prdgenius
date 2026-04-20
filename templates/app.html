@@ -24,6 +24,18 @@
       box-shadow:0 4px 16px rgba(0,0,0,0.5); font-size:20px; transition:all 0.2s; }
     .theme-toggle:hover { transform:scale(1.1); }
 
+
+    /* PRD Size Selector */
+    .size-selector { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+    .size-card { flex:1; min-width:100px; padding:12px 8px; border:2px solid #374151;
+      border-radius:12px; cursor:pointer; text-align:center; transition:all 0.2s; background:#111827; }
+    .size-card:hover { border-color:#6366f1; }
+    .size-card.active { border-color:#6366f1; background:linear-gradient(135deg,#6366f1,#4f46e5); color:#fff; }
+    .size-card.active .size-desc { color:rgba(255,255,255,0.8); }
+    .size-icon { font-size:1.3rem; margin-bottom:4px; }
+    .size-label { font-weight:700; font-size:0.85rem; }
+    .size-desc { font-size:0.7rem; color:#6b7280; margin-top:2px; }
+
     /* PRD output typography */
     .prd-output h1 { font-size:1.6rem;font-weight:800;color:#fff;margin:0 0 0.5rem;border-bottom:2px solid #4338ca;padding-bottom:0.75rem; }
     .prd-output h2 { font-size:1.15rem;font-weight:700;color:#e0e7ff;margin:2rem 0 0.75rem;padding:0.4rem 0.85rem;background:linear-gradient(90deg,rgba(67,56,202,0.18),transparent);border-left:3px solid #6366f1;border-radius:0 6px 6px 0; }
@@ -242,6 +254,24 @@
           <p class="text-xs text-gray-600 mt-1">More context = more specific, credible PRD output.</p>
         </div>
 
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-gray-300 mb-2">PRD Size</label>
+          <div class="size-selector">
+            <div class="size-card" onclick="selectSize('brief')" id="size-brief">
+              <div class="size-icon">📄</div><div class="size-label">Brief</div><div class="size-desc">~4 pages</div>
+            </div>
+            <div class="size-card active" onclick="selectSize('medium')" id="size-medium">
+              <div class="size-icon">📋</div><div class="size-label">Medium</div><div class="size-desc">~12 pages</div>
+            </div>
+            <div class="size-card" onclick="selectSize('extensive')" id="size-extensive">
+              <div class="size-icon">📚</div><div class="size-label">Extensive</div><div class="size-desc">~20 pages</div>
+            </div>
+            <div class="size-card" onclick="selectSize('ai_choice')" id="size-ai_choice">
+              <div class="size-icon">🤖</div><div class="size-label">AI Choice</div><div class="size-desc">Up to 25 pages</div>
+            </div>
+          </div>
+          <input type="hidden" id="prdSize" value="medium">
+        </div>
         <button type="submit" id="generateBtn"
           class="w-full text-white py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 no-print"
           style="background:linear-gradient(135deg,#6366f1,#4f46e5);box-shadow:0 8px 32px rgba(99,102,241,0.3)">
@@ -433,7 +463,8 @@
             target_users: document.getElementById('targetUsers').value.trim(),
             context: document.getElementById('context').value.trim(),
             company_stage: document.getElementById('companyStage').value,
-            format_style: document.getElementById('selectedFormat').value
+            format_style: document.getElementById('selectedFormat').value,
+            prd_size: document.getElementById('prdSize')?.value || 'medium'
           })
         });
         const data = await res.json();
@@ -466,6 +497,29 @@
         if (data.checkout_url) window.location.href = data.checkout_url;
         else alert("Could not start checkout. Please try again.");
       }
+
+    function toggleTheme() {
+      const html = document.documentElement;
+      const btn = document.getElementById('themeToggle');
+      if (html.classList.contains('light')) {
+        html.classList.remove('light'); btn.textContent = '🌙'; localStorage.setItem('theme','dark');
+      } else {
+        html.classList.add('light'); btn.textContent = '☀️'; localStorage.setItem('theme','light');
+      }
+    }
+    (function(){
+      if(localStorage.getItem('theme')==='light'){
+        document.documentElement.classList.add('light');
+        window.addEventListener('DOMContentLoaded',function(){
+          var b=document.getElementById('themeToggle'); if(b) b.textContent='☀️';
+        });
+      }
+    })();
+    function selectSize(size) {
+      document.querySelectorAll('.size-card').forEach(function(c){c.classList.remove('active');});
+      var card=document.getElementById('size-'+size); if(card) card.classList.add('active');
+      document.getElementById('prdSize').value=size;
+    }
     </script>
   <button class="theme-toggle no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
 </body>
