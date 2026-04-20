@@ -382,32 +382,15 @@ async def generate_prd(request: Request):
     }.get(format_style, "Write a comprehensive PRD.")
 
     prd_size = data.get("prd_size", "ai_choice").strip()
+    # Per-section word cap guarantees all 10 sections + TOC fit within token budget
     size_config = {
-        "brief":     (2000, "BRIEF: Cover only Executive Summary, Problem Statement, top 3 Features, Success Metrics, and Risks. Be concise. You MUST complete all 5 sections within your token limit."),
-        "medium":    (4000, "MEDIUM: Cover all 10 standard PRD sections with clear, actionable detail. You MUST complete all 10 sections within your token limit."),
-        "extensive": (6000, "EXTENSIVE: Cover all 10 sections with rich depth — detailed user stories, edge cases, technical specs, and comprehensive risk analysis. You MUST complete all 10 sections within your token limit."),
+        "brief":     (2000, 120),  # max_tok, words_per_section
+        "medium":    (4000, 250),
+        "extensive": (6000, 400),
     }
-    max_tok, size_instruction = size_config.get(prd_size, size_config["medium"])
-    prompt = f"""You are an expert product manager. Create a professional Product Requirements Document (PRD).
+    max_tok, words_per_section = size_config.get(prd_size, size_config["medium"])
 
-{format_instructions}
-
-SIZE REQUIREMENT: {size_instruction}
-
-ABSOLUTE RULES — follow these without exception:
-1. COMPLETENESS OVER DEPTH: Every section below MUST appear and MUST be finished. If you are running low on space, shorten or summarise sections — but never omit or leave one incomplete. A section with 2 bullet points is far better than a missing section.
-2. MONITOR YOUR PROGRESS: After each section, mentally check how many sections remain and how much space you have left. If behind, write more briefly going forward.
-3. END PROPERLY: The document must conclude with a finished "Open Questions" section. Do not stop mid-sentence or mid-section under any circumstances.
-
-Product Details:
-- Product Name: {product_name}
-- Problem Statement: {problem}
-- Target Users: {target_users or 'Not specified'}
-- Key Features: {key_features or 'Not specified'}
-- Success Metrics: {success_metrics or 'Not specified'}
-
-Generate a complete PRD in Markdown format. You MUST include ALL 10 sections — shorten any section if needed, but never skip one:
-1. Executive Summary
+    sections_list = """1. Executive Summary
 2. Problem Statement & Background
 3. Goals & Success Metrics
 4. User Personas & Target Audience
@@ -416,9 +399,31 @@ Generate a complete PRD in Markdown format. You MUST include ALL 10 sections —
 7. Technical Considerations
 8. Timeline & Milestones
 9. Risks & Mitigations
-10. Open Questions
+10. Open Questions"""
 
-Make it actionable and ready for engineering teams."""
+    prompt = f"""You are an expert product manager writing a Product Requirements Document (PRD).
+
+{format_instructions}
+
+Product Details:
+- Product Name: {product_name}
+- Problem Statement: {problem}
+- Target Users: {target_users or 'Not specified'}
+- Key Features: {key_features or 'Not specified'}
+- Success Metrics: {success_metrics or 'Not specified'}
+
+STRICT RULES — non-negotiable:
+1. Start with a Table of Contents listing all 10 sections.
+2. Write ALL 10 sections below. Every section is mandatory.
+3. Each section must be a MAXIMUM of {words_per_section} words. Do not exceed this limit.
+4. If content would exceed {words_per_section} words, cut the least important points — never cut the section itself.
+5. Depth scales with the limit: be concise for Brief, balanced for Medium, detailed for Extensive.
+6. The document MUST end with a completed "10. Open Questions" section.
+
+Sections (each max {words_per_section} words):
+{sections_list}
+
+Write in Markdown. Be professional, specific, and actionable."""
     try:
         _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
         # Round 1: main generation
