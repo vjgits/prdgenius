@@ -45,6 +45,13 @@
     html.light .size-card.active { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; border-color: #6366f1 !important; }
     html.light .size-card.active .size-label,
     html.light .size-card.active .size-desc { color: #fff !important; }
+    html.light .fmt-card { background: #f3f4f6 !important; border-color: #d1d5db !important; }
+    html.light .fmt-card:hover { border-color: #6366f1 !important; }
+    html.light .fmt-card.active { background: linear-gradient(135deg,rgba(99,102,241,0.12),rgba(67,56,202,0.06)) !important; border-color:#6366f1 !important; }
+    html.light .fmt-name { color: #1f2937 !important; }
+    html.light .fmt-card.active .fmt-name { color: #4f46e5 !important; }
+    html.light .fmt-sub  { color: #9ca3af !important; }
+    html.light .fmt-tip-box { background:#ffffff !important; border-color:#e5e7eb !important; color:#6b7280 !important; box-shadow:0 4px 16px rgba(0,0,0,0.1) !important; }
     html.light .border { border-color: #e5e7eb !important; }
     html.light [style*="background:rgba(17,24,39"] { background: #ffffff !important; color: #1f2937 !important; }
     html.light [style*="background:rgba(15,15,30"] { background: #f9fafb !important; }
@@ -68,6 +75,33 @@
     .size-icon { font-size:1.3rem; margin-bottom:4px; }
     .size-label { font-weight:700; font-size:0.85rem; }
     .size-desc { font-size:0.7rem; color:#6b7280; margin-top:2px; }
+
+    /* Format card grid with tooltips */
+    .fmt-card { position:relative; border:2px solid #374151; border-radius:12px; padding:11px 10px 10px;
+      cursor:pointer; transition:all 0.2s; background:rgba(17,24,39,0.6); }
+    .fmt-card:hover { border-color:#6366f1; background:rgba(99,102,241,0.07); }
+    .fmt-card.active { border-color:#6366f1; background:linear-gradient(135deg,rgba(99,102,241,0.18),rgba(67,56,202,0.08)); }
+    .fmt-card.active .fmt-name { color:#a5b4fc; }
+    .fmt-icon { font-size:1.25rem; margin-bottom:3px; line-height:1; }
+    .fmt-name { font-weight:700; font-size:0.78rem; color:#e2e8f0; line-height:1.2; }
+    .fmt-sub  { font-size:0.65rem; color:#6b7280; margin-top:2px; line-height:1.3; }
+    /* Tooltip */
+    .fmt-tip  { position:absolute; top:7px; right:8px; width:15px; height:15px; border-radius:50%;
+      border:1px solid #4b5563; color:#6b7280; font-size:0.6rem; display:flex; align-items:center;
+      justify-content:center; cursor:help; flex-shrink:0; }
+    .fmt-tip:hover { border-color:#818cf8; color:#818cf8; }
+    .fmt-tip-box { display:none; position:absolute; top:22px; right:-4px; width:210px;
+      background:#1a1f2e; border:1px solid #374151; border-radius:10px; padding:10px 12px;
+      font-size:0.71rem; color:#9ca3af; line-height:1.55; z-index:500;
+      box-shadow:0 8px 28px rgba(0,0,0,0.6); pointer-events:none; }
+    .fmt-card:nth-child(3n) .fmt-tip-box,
+    .fmt-card:nth-child(3n-1) .fmt-tip-box { right:auto; left:-4px; }
+    .fmt-tip:hover .fmt-tip-box { display:block; }
+
+    /* Streaming cursor */
+    .stream-cursor { display:inline-block; width:2px; height:1em; background:#6366f1;
+      border-radius:1px; animation:blink 1s step-end infinite; vertical-align:text-bottom; margin-left:1px; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 
     /* PRD output typography */
     .prd-output h1 { font-size:1.6rem;font-weight:800;color:#fff;margin:0 0 0.5rem;border-bottom:2px solid #4338ca;padding-bottom:0.75rem; }
@@ -223,26 +257,51 @@
 
       <form id="prdForm" class="space-y-5">
         <div>
-          <label class="block text-sm font-semibold text-gray-300 mb-3">PRD Format</label>
-          <div class="grid grid-cols-3 gap-3">
-            <button type="button" data-format="google" onclick="selectFormat('google')"
-              class="format-btn active border-2 border-indigo-500 rounded-xl p-3.5 text-left transition">
-              <div class="text-xl mb-1.5">🏢</div>
-              <div class="text-xs font-bold text-white">Google Style</div>
-              <div class="text-xs text-gray-400 mt-0.5">Full spec, 13 sections</div>
-            </button>
-            <button type="button" data-format="amazon" onclick="selectFormat('amazon')"
-              class="format-btn border-2 border-gray-700 rounded-xl p-3.5 text-left transition hover:border-gray-500" style="background:rgba(17,24,39,0.5)">
-              <div class="text-xl mb-1.5">📦</div>
-              <div class="text-xs font-bold text-white">Amazon WB</div>
-              <div class="text-xs text-gray-400 mt-0.5">Press Release + FAQ</div>
-            </button>
-            <button type="button" data-format="linear" onclick="selectFormat('linear')"
-              class="format-btn border-2 border-gray-700 rounded-xl p-3.5 text-left transition hover:border-gray-500" style="background:rgba(17,24,39,0.5)">
-              <div class="text-xl mb-1.5">⚡</div>
-              <div class="text-xs font-bold text-white">Linear Style</div>
-              <div class="text-xs text-gray-400 mt-0.5">Concise & fast</div>
-            </button>
+          <label class="block text-sm font-semibold text-gray-300 mb-2">PRD Format <span class="text-gray-600 font-normal text-xs">(hover ⓘ for details)</span></label>
+          <div class="grid grid-cols-3 gap-2">
+
+            <div class="fmt-card active" data-format="google" onclick="selectFormat('google')">
+              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">The gold standard for product teams at scale. Full 10-section spec covering goals, personas, P0/P1/P2 requirements, success metrics, technical tradeoffs, and launch plan. Used at Google, Meta, and Microsoft.</div></div>
+              <div class="fmt-icon">🏢</div>
+              <div class="fmt-name">Google Style</div>
+              <div class="fmt-sub">Full spec · comprehensive</div>
+            </div>
+
+            <div class="fmt-card" data-format="amazon" onclick="selectFormat('amazon')">
+              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Invented at Amazon. Write the customer Press Release first, then work backwards to requirements. Forces extreme clarity on the outcome before anyone writes code. Legendary for killing bad ideas early.</div></div>
+              <div class="fmt-icon">📦</div>
+              <div class="fmt-name">Amazon WB</div>
+              <div class="fmt-sub">Press Release first</div>
+            </div>
+
+            <div class="fmt-card" data-format="linear" onclick="selectFormat('linear')">
+              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Built for engineering velocity. Concise, ticket-structured format with clear problem, solution, and acceptance criteria. Engineers can start building immediately. No fluff, no filler.</div></div>
+              <div class="fmt-icon">⚡</div>
+              <div class="fmt-name">Linear Style</div>
+              <div class="fmt-sub">Agile · sprint-ready</div>
+            </div>
+
+            <div class="fmt-card" data-format="jtbd" onclick="selectFormat('jtbd')">
+              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Every requirement anchored to the job a user is trying to get done — not a feature list. Framework by Clayton Christensen. Keeps teams obsessed with outcomes, not outputs. Great for user-research-driven teams.</div></div>
+              <div class="fmt-icon">🎯</div>
+              <div class="fmt-name">Jobs-to-be-Done</div>
+              <div class="fmt-sub">Outcome-first</div>
+            </div>
+
+            <div class="fmt-card" data-format="hypothesis" onclick="selectFormat('hypothesis')">
+              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Treat every feature as a testable bet. Requirements written as hypotheses with explicit success signals. Makes assumptions visible. Perfect for early-stage or experimental features where you're still learning what works.</div></div>
+              <div class="fmt-icon">🔬</div>
+              <div class="fmt-name">Lean Hypothesis</div>
+              <div class="fmt-sub">Assumption-driven</div>
+            </div>
+
+            <div class="fmt-card" data-format="rfc" onclick="selectFormat('rfc')">
+              <div class="fmt-tip">ⓘ<div class="fmt-tip-box">Engineering-first spec used at Stripe, Notion, and Discord. Deep on system design, API contracts, data models, performance requirements, and technical tradeoffs. Written for the team building it, not the stakeholders approving it.</div></div>
+              <div class="fmt-icon">⚙️</div>
+              <div class="fmt-name">Technical RFC</div>
+              <div class="fmt-sub">Engineering-first</div>
+            </div>
+
           </div>
           <input type="hidden" id="selectedFormat" value="google"/>
         </div>
@@ -419,15 +478,7 @@
 
     function selectFormat(fmt) {
       document.getElementById('selectedFormat').value = fmt;
-      document.querySelectorAll('.format-btn').forEach(btn => {
-        if (btn.dataset.format === fmt) {
-          btn.classList.add('active');
-          btn.style.background = '';
-        } else {
-          btn.classList.remove('active');
-          btn.style.background = 'rgba(17,24,39,0.5)';
-        }
-      });
+      document.querySelectorAll('.fmt-card').forEach(c => c.classList.toggle('active', c.dataset.format === fmt));
     }
 
     function showGenerator() {
@@ -477,54 +528,105 @@
 
     document.getElementById('prdForm').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const btn = document.getElementById('generateBtn');
-      const genErr = document.getElementById('genError');
+      const btn      = document.getElementById('generateBtn');
+      const genErr   = document.getElementById('genError');
       const limitErr = document.getElementById('limitError');
       genErr.classList.add('hidden'); limitErr.classList.add('hidden');
+
       const featureName = document.getElementById('featureName').value.trim();
       const userProblem = document.getElementById('userProblem').value.trim();
       if (!featureName || !userProblem) return;
+
       btn.disabled = true;
-      btn.innerHTML = '<span class="loader mr-2"></span>Generating...';
+      btn.innerHTML = '<span class="loader mr-2"></span>Writing your PRD...';
+
+      // Show output panel immediately — streaming fills it live
       document.getElementById('generatorPanel').classList.add('hidden');
       const gate = document.getElementById('upgradeGate');
       if (gate) gate.classList.add('hidden');
       document.getElementById('outputPanel').classList.remove('hidden');
-      document.getElementById('loadingState').classList.remove('hidden');
-      document.getElementById('prdResult').classList.add('hidden');
+      document.getElementById('loadingState').classList.add('hidden');
+      document.getElementById('prdResult').classList.remove('hidden');
+      document.getElementById('prdTitle').textContent = featureName;
+      const contentEl = document.getElementById('prdContent');
+      contentEl.innerHTML = '<span class="stream-cursor"></span>';
+      window.scrollTo(0, 0);
+
+      let fullText = '';
+      let renderTimer = null;
+      const RENDER_DEBOUNCE = 60; // ms
+
+      function scheduleRender(final) {
+        if (renderTimer) clearTimeout(renderTimer);
+        if (final) {
+          contentEl.innerHTML = marked.parse(fullText);
+        } else {
+          renderTimer = setTimeout(() => {
+            contentEl.innerHTML = marked.parse(fullText) + '<span class="stream-cursor"></span>';
+          }, RENDER_DEBOUNCE);
+        }
+      }
+
       try {
         const res = await fetch('/api/generate', {
-          method: 'POST', headers: {'Content-Type':'application/json'},
+          method: 'POST', headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
-            product_name: featureName, problem: userProblem,
-            target_users: document.getElementById('targetUsers').value.trim(),
-            context: document.getElementById('context').value.trim(),
+            product_name:  featureName,
+            problem:       userProblem,
+            target_users:  document.getElementById('targetUsers').value.trim(),
+            context:       document.getElementById('context').value.trim(),
             company_stage: document.getElementById('companyStage').value,
-            format_style: document.getElementById('selectedFormat').value,
-            prd_size: document.getElementById('prdSize')?.value || 'medium'
+            format_style:  document.getElementById('selectedFormat').value,
+            prd_size:      document.getElementById('prdSize')?.value || 'medium',
           })
         });
-        const data = await res.json();
+
+        // Non-2xx before streaming starts = JSON error (credit limit, validation, etc.)
         if (!res.ok) {
-          if (res.status === 403) {
-            showGenerator();
-            limitErr.classList.remove('hidden');
-          } else if (res.status === 429) {
-            showGenerator(); limitErr.classList.remove('hidden');
-          } else {
-            showGenerator(); genErr.textContent = data.error || data.detail || 'Generation failed.'; genErr.classList.remove('hidden');
-          }
+          const data = await res.json().catch(() => ({}));
+          showGenerator();
+          if (res.status === 403) { limitErr.classList.remove('hidden'); }
+          else { genErr.textContent = data.error || 'Generation failed.'; genErr.classList.remove('hidden'); }
           return;
         }
-        rawMarkdown = data.content;
-        currentPrdId = data.prd_id;
-        document.getElementById('prdTitle').textContent = featureName;
-        lastPrdData = Object.assign({},data,{title:featureName,user_problem:document.getElementById('userProblem')?.value,target_users:document.getElementById('targetUsers')?.value,company_stage:document.getElementById('companyStage')?.value,additional_context:document.getElementById('additionalContext')?.value});
-        document.getElementById('prdContent').innerHTML = marked.parse(rawMarkdown);
-        document.getElementById('loadingState').classList.add('hidden');
-        document.getElementById('prdResult').classList.remove('hidden');
-        window.scrollTo(0, 0);
-      } catch(ex) {
+
+        // Read SSE stream
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (!raw) continue;
+            try {
+              const evt = JSON.parse(raw);
+              if (evt.error) {
+                showGenerator();
+                genErr.textContent = evt.error;
+                genErr.classList.remove('hidden');
+                return;
+              }
+              if (evt.text) {
+                fullText += evt.text;
+                scheduleRender(false);
+              }
+              if (evt.done) {
+                rawMarkdown  = fullText;
+                currentPrdId = evt.prd_id;
+                scheduleRender(true);
+              }
+            } catch (_) {}
+          }
+        }
+      } catch (ex) {
         showGenerator();
         genErr.textContent = 'Network error. Please check your connection.';
         genErr.classList.remove('hidden');

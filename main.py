@@ -397,15 +397,16 @@ async def generate_prd(request: Request):
     if not check_rate_limit(f"gen:{user['id']}", max_calls=5, window_seconds=60):
         return JSONResponse({"error": "Too many requests. Please wait a moment."}, status_code=429)
 
-    data            = await request.json()
-    product_name    = data.get("product_name",    "").strip()
-    problem         = data.get("problem",          "").strip()
-    target_users    = data.get("target_users",     "").strip()
-    key_features    = data.get("key_features",     "").strip()
-    success_metrics = data.get("success_metrics",  "").strip()
-    format_style       = data.get("format_style",      "standard").strip()
-    company_stage      = data.get("company_stage",     "").strip()
+    data               = await request.json()
+    product_name       = data.get("product_name",    "").strip()
+    problem            = data.get("problem",          "").strip()
+    target_users       = data.get("target_users",     "").strip()
+    key_features       = data.get("key_features",     "").strip()
+    success_metrics    = data.get("success_metrics",  "").strip()
+    format_style       = data.get("format_style",     "google").strip()
+    company_stage      = data.get("company_stage",    "").strip()
     additional_context = data.get("additional_context", data.get("context", "")).strip()
+
     if not product_name or not problem:
         return JSONResponse({"error": "Product name and problem statement are required."}, status_code=400)
 
@@ -424,27 +425,57 @@ async def generate_prd(request: Request):
     if credits_remaining < credit_cost:
         is_free = user.get("plan", "free") not in ("pro", "admin", "yearly")
         return JSONResponse(
-            {
-                "error": (
-                    f"Not enough credits. This PRD costs {credit_cost} credits but you only have "
-                    f"{max(0, credits_remaining)} remaining this month. "
-                    f"Pro plan: 120 credits/month — 40 Brief / 30 Medium / 20 Extensive."
-                ),
-                "upgrade": is_free
-            },
+            {"error": "You've reached your PRD limit for this month.", "upgrade": is_free},
             status_code=403
         )
 
+    # ── Format instructions for each style ────────────────────────────────────
     format_instructions = {
+        "google": (
+            "Write a comprehensive Google-style PRD. Be data-driven, precise, and cross-functionally "
+            "aligned. Cover goals, personas, requirements, success metrics, technical considerations, "
+            "launch plan, and risk analysis with the depth expected of a senior PM."
+        ),
+        "amazon": (
+            "Write an Amazon Working Backwards PRD. Begin with an internal PRESS RELEASE (2 crisp "
+            "paragraphs: customer, problem, solution, key benefit). Follow with an internal FAQ "
+            "(customer questions first, then business/technical). Then write the full requirements. "
+            "Every decision must trace back to the customer outcome."
+        ),
+        "linear": (
+            "Write a Linear-style agile PRD. Be ruthlessly concise and sprint-ready. Lead with a "
+            "sharp problem statement, proposed solution, and explicit acceptance criteria per "
+            "requirement. Engineers must be able to start building from this document immediately. "
+            "Cut all fluff."
+        ),
+        "jtbd": (
+            "Write a Jobs-to-be-Done (JTBD) PRD. Anchor every requirement to the specific job the "
+            "user is trying to accomplish. Use the structure: 'When [situation], I want to "
+            "[motivation], so I can [outcome].' Define success entirely in terms of user outcomes, "
+            "not feature outputs. Popularised by Clayton Christensen."
+        ),
+        "hypothesis": (
+            "Write a Lean Hypothesis-driven PRD. Frame every feature as a testable bet: 'We believe "
+            "[feature] will [outcome] for [user segment]. We will know this is true when [measurable "
+            "signal].' Make every assumption explicit. Define what would prove or disprove each one. "
+            "Ideal for early-stage or experimental features where you are still learning."
+        ),
+        "rfc": (
+            "Write a Technical RFC (Request for Comments) PRD. Lead with technical context, system "
+            "design options, and engineering tradeoffs. Include API contracts, data models, "
+            "performance requirements, security considerations, and rollback plan. Written for the "
+            "engineering team building it — not the stakeholders approving it."
+        ),
+        # legacy aliases kept for backwards compat
         "standard":  "Write a comprehensive, well-structured PRD with clear sections.",
-        "lean":      "Write a concise lean PRD focusing on essentials only. Keep it brief.",
+        "lean":      "Write a concise lean PRD focusing on essentials only.",
         "agile":     "Write an agile-style PRD with user stories and acceptance criteria.",
         "technical": "Write a technical PRD with system requirements and engineering details.",
-    }.get(format_style, "Write a comprehensive PRD.")
+    }.get(format_style, "Write a comprehensive, well-structured PRD.")
 
     # Per-section word cap guarantees all 10 sections + TOC fit within token budget
     size_config = {
-        "brief":     (2000, 120),  # max_tok, words_per_section
+        "brief":     (2000, 120),
         "medium":    (4000, 250),
         "extensive": (6000, 400),
     }
@@ -471,64 +502,93 @@ Product Details:
 - Target Users: {target_users or 'Not specified'}
 - Key Features: {key_features or 'Not specified'}
 - Success Metrics: {success_metrics or 'Not specified'}
+- Company Stage: {company_stage or 'Not specified'}
+- Additional Context: {additional_context or 'None'}
 
 STRICT RULES — non-negotiable:
 1. Start with a Table of Contents listing all 10 sections.
 2. Write ALL 10 sections below. Every section is mandatory.
-3. Each section must be a MAXIMUM of {words_per_section} words. Do not exceed this limit.
-4. If content would exceed {words_per_section} words, cut the least important points — never cut the section itself.
-5. Depth scales with the limit: be concise for Brief, balanced for Medium, detailed for Extensive.
-6. The document MUST end with a completed "10. Open Questions" section.
+3. Each section must be a MAXIMUM of {words_per_section} words. Never cut a section — cut detail instead.
+4. Depth scales with the limit: concise for Brief, balanced for Medium, detailed for Extensive.
+5. The document MUST end with a completed "10. Open Questions" section.
 
 Sections (each max {words_per_section} words):
 {sections_list}
 
 Write in Markdown. Be professional, specific, and actionable."""
-    try:
-        _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
-        # Round 1: main generation
-        _r = await _client.messages.create(
-            model="claude-sonnet-4-6", max_tokens=max_tok,
-            messages=[{"role": "user", "content": prompt}]
-        )
-        content = _r.content[0].text
-        # Round 2 (only if round 1 hit the token limit): wrap up remaining sections
-        if _r.stop_reason == "max_tokens":
-            _r2 = await _client.messages.create(
-                model="claude-sonnet-4-6", max_tokens=1500,
-                messages=[
-                    {"role": "user", "content": prompt},
-                    {"role": "assistant", "content": content},
-                    {"role": "user", "content": (
-                        "The document was cut off. You have 1500 tokens to finish it. "
-                        "Identify every section from the required list that is missing or incomplete. "
-                        "Write each remaining section — condense aggressively if needed, even 2-3 bullet points per section is fine. "
-                        "COMPLETENESS IS MANDATORY: every missing section must appear and be finished. "
-                        "Do NOT repeat anything already written. End with a completed Open Questions section."
-                    )}
-                ]
+
+    user_id = user["id"]
+
+    # ── Streaming SSE generator ────────────────────────────────────────────────
+    async def event_stream():
+        full_content = ""
+        try:
+            _client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)
+
+            # Round 1 — stream main generation
+            async with _client.messages.stream(
+                model="claude-sonnet-4-6", max_tokens=max_tok,
+                messages=[{"role": "user", "content": prompt}]
+            ) as stream:
+                async for text in stream.text_stream:
+                    full_content += text
+                    yield f"data: {json.dumps({'text': text})}\n\n"
+                final_msg = await stream.get_final_message()
+
+            # Round 2 — only if model hit the token wall
+            if final_msg.stop_reason == "max_tokens":
+                continuation = (
+                    "The document was cut off. You have 1500 tokens to finish it. "
+                    "Identify every section from the required list that is missing or incomplete. "
+                    "Write each remaining section — condense aggressively if needed. "
+                    "COMPLETENESS IS MANDATORY. Do NOT repeat anything already written. "
+                    "End with a completed Open Questions section."
+                )
+                async with _client.messages.stream(
+                    model="claude-sonnet-4-6", max_tokens=1500,
+                    messages=[
+                        {"role": "user",      "content": prompt},
+                        {"role": "assistant", "content": full_content},
+                        {"role": "user",      "content": continuation},
+                    ]
+                ) as stream2:
+                    async for text in stream2.text_stream:
+                        full_content += text
+                        yield f"data: {json.dumps({'text': text})}\n\n"
+
+        except Exception as e:
+            logger.error(f"Anthropic stream error: {e}")
+            yield f"data: {json.dumps({'error': 'AI generation failed. Please try again.'})}\n\n"
+            return
+
+        # Save to DB and deduct credits after streaming completes
+        prd_id = str(uuid.uuid4())
+        try:
+            conn = get_db()
+            conn.execute(
+                "INSERT INTO prds (id, user_id, title, content, format_style, target_users, "
+                "key_features, success_metrics, company_stage, additional_context) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                (prd_id, user_id, product_name, full_content, format_style,
+                 target_users, key_features, success_metrics, company_stage, additional_context)
             )
-            content += _r2.content[0].text
-    except Exception as e:
-        logger.error(f"Anthropic API error: {e}")
-        return JSONResponse({"error": "AI generation failed. Please try again."}, status_code=500)
-    prd_id = str(uuid.uuid4())
-    conn   = get_db()
-    conn.execute(
-        "INSERT INTO prds (id, user_id, title, content, format_style, target_users, key_features, success_metrics, company_stage, additional_context) VALUES (?,?,?,?,?,?,?,?,?,?)",
-        (prd_id, user["id"], product_name, content, format_style, target_users, key_features, success_metrics, company_stage, additional_context)
+            conn.execute(
+                "UPDATE users SET credits_used = credits_used + ?, "
+                "prds_used_this_month = prds_used_this_month + 1 WHERE id=?",
+                (credit_cost, user_id)
+            )
+            conn.commit(); conn.close()
+        except Exception as e:
+            logger.error(f"DB save error after stream: {e}")
+
+        new_remaining = max(0, credits_remaining - credit_cost)
+        yield f"data: {json.dumps({'done': True, 'prd_id': prd_id, 'title': product_name, 'credits_remaining': new_remaining})}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
-    conn.execute(
-        "UPDATE users SET credits_used = credits_used + ?, prds_used_this_month = prds_used_this_month + 1 WHERE id=?",
-        (credit_cost, user["id"])
-    )
-    conn.commit(); conn.close()
-    new_remaining = max(0, credits_remaining - credit_cost)
-    return JSONResponse({
-        "success": True, "prd_id": prd_id, "content": content, "title": product_name,
-        "credits_used": credit_cost,
-        "credits_remaining": new_remaining,
-    })
 
 @app.get("/api/prd/{prd_id}")
 async def get_prd(prd_id: str, request: Request):
