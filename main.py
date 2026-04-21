@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File
+from fastapi import FastAPI, Request, Form, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse, PlainTextResponse, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -490,52 +490,6 @@ async def admin_analytics(request: Request, days: int = 30):
         "browser": [{"name": r["browser"],"count": r["cnt"]}    for r in br_rows],
         "pages":   [{"path": r["path"],  "count": r["cnt"]}     for r in page_rows],
     })
-
-# ─── Transcript parse API ──────────────────────────────────────────────────────
-@app.post("/api/parse-transcript")
-async def parse_transcript(request: Request, file: UploadFile = File(...)):
-    user = get_current_user(request)
-    if not user:
-        raise HTTPException(status_code=401)
-    filename = (file.filename or "").lower()
-    content  = await file.read()
-    if len(content) > 5 * 1024 * 1024:  # 5 MB limit
-        return JSONResponse({"error": "File too large (max 5 MB)"}, status_code=400)
-    try:
-        if filename.endswith(".vtt"):
-            text = content.decode("utf-8", errors="ignore")
-            # Strip WEBVTT header, timestamps, NOTE blocks, blank lines
-            lines = text.splitlines()
-            clean = []
-            for line in lines:
-                line = line.strip()
-                if not line: continue
-                if line.startswith("WEBVTT"): continue
-                if line.startswith("NOTE"): continue
-                if re.match(r"^\d{2}:\d{2}:\d{2}[.,]\d{3}\s+-->\s+", line): continue
-                if re.match(r"^\d+$", line): continue  # cue index numbers
-                # Strip speaker labels like "Speaker 1: " or "[Speaker]: "
-                line = re.sub(r"^\[?[A-Za-z0-9 _]+\]?:\s*", "", line)
-                if line:
-                    clean.append(line)
-            extracted = " ".join(clean)
-        elif filename.endswith(".docx"):
-            from docx import Document as DocxDocument
-            import io as _io
-            doc = DocxDocument(_io.BytesIO(content))
-            extracted = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-        elif filename.endswith(".txt"):
-            extracted = content.decode("utf-8", errors="ignore")
-        else:
-            return JSONResponse({"error": "Unsupported file type. Upload .vtt or .docx"}, status_code=400)
-        # Trim to 8000 chars to avoid token overload
-        extracted = extracted[:8000].strip()
-        if not extracted:
-            return JSONResponse({"error": "Could not extract text from file"}, status_code=400)
-        return JSONResponse({"text": extracted, "chars": len(extracted)})
-    except Exception as e:
-        logger.error(f"Transcript parse error: {e}")
-        return JSONResponse({"error": "Failed to parse file"}, status_code=500)
 
 # ─── Auth API ─────────────────────────────────────────────────────────────────
 @app.post("/api/signup")
