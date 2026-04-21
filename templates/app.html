@@ -10,60 +10,314 @@
   <style>
     body { font-family:'Inter',sans-serif; background:#0a0a14; }
     :root { --bg: #0a0a14; --card: #111827; --border: #1f2937; }
-    html.light body { background: #f3f4f6 !important; color: #111827 !important; }
-    html.light aside { background: #ffffff !important; border-color: #e5e7eb !important; }
-    html.light .bg-gray-900 { background: #f9fafb !important; }
-    html.light .bg-gray-800 { background: #f3f4f6 !important; }
-    html.light .text-gray-300, html.light .text-gray-400, html.light .text-gray-500 { color: #4b5563 !important; }
-    html.light .border-gray-700, html.light .border-gray-800 { border-color: #d1d5db !important; }
-    html.light .text-white { color: #111827 !important; }
-    body { transition: background 0.2s, color 0.2s; }
-    .theme-toggle { position:fixed; bottom:24px; right:24px; z-index:9999; background:#1f2937;
-      border:1px solid #374151; border-radius:50%; width:46px; height:46px;
-      display:flex; align-items:center; justify-content:center; cursor:pointer;
-      box-shadow:0 4px 16px rgba(0,0,0,0.5); font-size:20px; transition:all 0.2s; }
-    .theme-toggle:hover { transform:scale(1.1); }
+    body { transition: background 0.25s, color 0.25s; }
 
+    /* ══════════════════════════════════════════════════════════
+       APPLE-STYLE LIGHT MODE — Complete system
+       Apple palette: #f5f5f7 bg · #ffffff surface · #1d1d1f text
+       ══════════════════════════════════════════════════════════ */
 
+    /* ── Base ── */
+    html.light body { background: #f5f5f7 !important; color: #1d1d1f !important; }
+    html.light .text-white { color: #1d1d1f !important; }
+    html.light .text-gray-200 { color: #1d1d1f !important; }
+    html.light .text-gray-300 { color: #3a3a3c !important; }
+    html.light .text-gray-400 { color: #6e6e73 !important; }
+    html.light .text-gray-500 { color: #86868b !important; }
+    html.light .text-gray-600 { color: #86868b !important; }
+    html.light .text-xs { color: #6e6e73 !important; }
+    html.light p { color: #3a3a3c !important; }
+    html.light label { color: #3a3a3c !important; }
+    html.light h1, html.light h2, html.light h3 { color: #1d1d1f !important; }
 
-    /* Light mode — comprehensive overrides */
+    /* ── Desktop Sidebar ── */
+    html.light aside {
+      background: #ffffff !important;
+      border-right: 1px solid #d2d2d7 !important;
+      box-shadow: 2px 0 12px rgba(0,0,0,0.06) !important;
+    }
+    html.light aside [style*="border-bottom:1px solid rgba(255,255,255,0.07)"] {
+      border-bottom-color: #e5e5ea !important;
+    }
+    html.light aside [style*="border-top:1px solid rgba(255,255,255,0.07)"] {
+      border-top-color: #e5e5ea !important;
+    }
+    html.light .sidebar-item:hover { background: rgba(99,102,241,0.08) !important; }
+    html.light .text-indigo-400 { color: #6366f1 !important; }
+    html.light .text-indigo-300 { color: #6366f1 !important; }
+    html.light .bg-indigo-500, html.light [style*="background:linear-gradient(135deg,#6366f1"] { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; }
+    html.light [style*="background:rgba(67,56,202,0.1)"] { background: rgba(99,102,241,0.07) !important; border-color: rgba(99,102,241,0.25) !important; }
+    html.light [style*="background:rgba(99,102,241,0.15)"] { background: rgba(99,102,241,0.08) !important; border-color: rgba(99,102,241,0.25) !important; }
+    html.light .text-indigo-200 { color: #4f46e5 !important; }
+    html.light a.text-indigo-400 { color: #6366f1 !important; }
+
+    /* ── Main content area ── */
+    html.light main { background: #f5f5f7 !important; }
+    html.light .bg-gray-900 { background: #ffffff !important; box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important; }
+    html.light .bg-gray-800 { background: #f5f5f7 !important; }
+    html.light .border-gray-700 { border-color: #d2d2d7 !important; }
+    html.light .border-gray-800 { border-color: #e5e5ea !important; }
+
+    /* ── Mobile top bar (sticky generator bar) ── */
+    html.light #mobileMenuBtn {
+      background: rgba(255,255,255,0.9) !important;
+      border-bottom-color: #d2d2d7 !important;
+      backdrop-filter: blur(12px) !important;
+    }
+    html.light #mobileMenuBtn span { color: #1d1d1f !important; }
+    html.light #mobileMenuBtn svg { stroke: #1d1d1f !important; }
+
+    /* ── Generator form section ── */
+    html.light #generatorPanel h1 {
+      background: linear-gradient(90deg,#1d1d1f,#4f46e5) !important;
+      -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+    html.light #generatorPanel p { color: #6e6e73 !important; }
+
+    /* ── Inputs, textareas, selects ── */
     html.light textarea,
     html.light select,
     html.light input:not([type="hidden"]) {
-      background: #ffffff !important; color: #1f2937 !important;
-      border-color: #d1d5db !important;
+      background: #ffffff !important;
+      color: #1d1d1f !important;
+      border-color: #d2d2d7 !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+    }
+    html.light textarea:focus,
+    html.light select:focus,
+    html.light input:focus {
+      border-color: #6366f1 !important;
+      box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important;
     }
     html.light textarea::placeholder,
-    html.light input::placeholder { color: #9ca3af !important; }
-    html.light p, html.light label { color: #374151 !important; }
-    html.light h1, html.light h2, html.light h3 { color: #111827 !important; }
-    html.light .text-gray-600 { color: #6b7280 !important; }
-    html.light .text-xs { color: #6b7280 !important; }
-    html.light .size-card { background: #f3f4f6 !important; border-color: #d1d5db !important; }
-    html.light .size-card .size-label { color: #1f2937 !important; }
-    html.light .size-card .size-desc { color: #6b7280 !important; }
-    html.light .size-card.active { background: linear-gradient(135deg,#6366f1,#4f46e5) !important; border-color: #6366f1 !important; }
-    html.light .size-card.active .size-label,
-    html.light .size-card.active .size-desc { color: #fff !important; }
-    html.light .fmt-card { background: #f3f4f6 !important; border-color: #d1d5db !important; }
-    html.light .fmt-card:hover { border-color: #6366f1 !important; }
-    html.light .fmt-card.active { background: linear-gradient(135deg,rgba(99,102,241,0.12),rgba(67,56,202,0.06)) !important; border-color:#6366f1 !important; }
-    html.light .fmt-name { color: #1f2937 !important; }
+    html.light input::placeholder { color: #aeaeb2 !important; }
+    html.light .company-select {
+      background-color: #ffffff !important;
+      color: #1d1d1f !important;
+      border-color: #d2d2d7 !important;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236e6e73' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") !important;
+    }
+
+    /* ── Format cards ── */
+    html.light .fmt-card {
+      background: #ffffff !important;
+      border-color: #d2d2d7 !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+    }
+    html.light .fmt-card:hover { border-color: #6366f1 !important; box-shadow: 0 2px 12px rgba(99,102,241,0.12) !important; }
+    html.light .fmt-card.active {
+      background: linear-gradient(135deg,rgba(99,102,241,0.08),rgba(67,56,202,0.04)) !important;
+      border-color: #6366f1 !important;
+      box-shadow: 0 2px 12px rgba(99,102,241,0.15) !important;
+    }
+    html.light .fmt-name { color: #1d1d1f !important; }
     html.light .fmt-card.active .fmt-name { color: #4f46e5 !important; }
-    html.light .fmt-sub  { color: #9ca3af !important; }
-    html.light .fmt-tip-box { background:#ffffff !important; border-color:#e5e7eb !important; color:#6b7280 !important; box-shadow:0 4px 16px rgba(0,0,0,0.1) !important; }
-    html.light .border { border-color: #e5e7eb !important; }
-    html.light [style*="background:rgba(17,24,39"] { background: #ffffff !important; color: #1f2937 !important; }
-    html.light [style*="background:rgba(15,15,30"] { background: #f9fafb !important; }
-    html.light .prd-output h1 { color: #111827 !important; border-color: #6366f1 !important; }
-    html.light .prd-output h2 { color: #1f2937 !important; background: linear-gradient(90deg,rgba(99,102,241,0.1),transparent) !important; }
-    html.light .prd-output h3 { color: #374151 !important; }
+    html.light .fmt-sub { color: #86868b !important; }
+    html.light .fmt-locked { opacity: 0.5 !important; }
+    html.light .fmt-tip { border-color: #d2d2d7 !important; color: #86868b !important; }
+
+    /* ── Size selector ── */
+    html.light .size-card {
+      background: #ffffff !important;
+      border-color: #d2d2d7 !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+    }
+    html.light .size-card .size-label { color: #1d1d1f !important; }
+    html.light .size-card .size-desc { color: #86868b !important; }
+    html.light .size-card:hover { border-color: #6366f1 !important; }
+    html.light .size-card.active {
+      background: linear-gradient(135deg,#6366f1,#4f46e5) !important;
+      border-color: #6366f1 !important;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3) !important;
+    }
+    html.light .size-card.active .size-label,
+    html.light .size-card.active .size-desc { color: #ffffff !important; }
+
+    /* ── PRD output area ── */
+    html.light #prdResult { background: #ffffff !important; border-color: #e5e5ea !important; box-shadow: 0 2px 16px rgba(0,0,0,0.07) !important; }
+    html.light .prd-output h1 { color: #1d1d1f !important; border-color: #6366f1 !important; }
+    html.light .prd-output h2 {
+      color: #1d1d1f !important;
+      background: linear-gradient(90deg,rgba(99,102,241,0.07),transparent) !important;
+      border-left-color: #6366f1 !important;
+    }
+    html.light .prd-output h3 { color: #3a3a3c !important; }
     html.light .prd-output p,
-    html.light .prd-output li { color: #374151 !important; }
-    html.light .prd-output strong { color: #111827 !important; }
-    html.light .prd-output td { color: #374151 !important; border-color: #e5e7eb !important; }
-    html.light .prd-output tr:nth-child(even) td { background: rgba(99,102,241,0.06) !important; }
-    html.light .theme-toggle { background: #f3f4f6 !important; border-color: #d1d5db !important; }
+    html.light .prd-output li { color: #3a3a3c !important; }
+    html.light .prd-output strong { color: #1d1d1f !important; }
+    html.light .prd-output em { color: #4f46e5 !important; }
+    html.light .prd-output td { color: #3a3a3c !important; border-color: #e5e5ea !important; }
+    html.light .prd-output tr:nth-child(even) td { background: rgba(99,102,241,0.04) !important; }
+    html.light .prd-output tr:hover td { background: rgba(99,102,241,0.07) !important; }
+    html.light .prd-output blockquote { background: rgba(99,102,241,0.06) !important; color: #4f46e5 !important; }
+    html.light .prd-output hr { border-top-color: #e5e5ea !important; }
+    html.light .prd-output code { background: #f5f5f7 !important; color: #4f46e5 !important; border-color: #d2d2d7 !important; }
+    html.light .prd-output pre { background: #f5f5f7 !important; border-color: #d2d2d7 !important; }
+
+    /* ── Error / limit banners ── */
+    html.light #limitError { background: linear-gradient(135deg,rgba(99,102,241,0.08),rgba(67,56,202,0.05)) !important; border-color: rgba(99,102,241,0.3) !important; }
+    html.light #limitError p { color: #4f46e5 !important; }
+    html.light #limitError a { color: #6366f1 !important; }
+
+    /* ── Tooltip ── */
+    html.light #globalTip {
+      background: #ffffff !important;
+      border-color: #d2d2d7 !important;
+      color: #6e6e73 !important;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.12) !important;
+    }
+
+    /* ── Theme toggle button ── */
+    .theme-toggle { position:fixed; bottom:24px; right:24px; z-index:9999; background:#1d1d1f;
+      border:1px solid #3a3a3c; border-radius:50%; width:46px; height:46px;
+      display:flex; align-items:center; justify-content:center; cursor:pointer;
+      box-shadow:0 4px 16px rgba(0,0,0,0.4); font-size:20px; transition:all 0.2s; }
+    .theme-toggle:hover { transform:scale(1.1); }
+    html.light .theme-toggle { background: #ffffff !important; border-color: #d2d2d7 !important; box-shadow: 0 4px 16px rgba(0,0,0,0.12) !important; }
+
+    /* ── Section labels ── */
+    html.light .fmt-section-label { color: #86868b !important; }
+
+    /* ════════════════════════════════════════
+       MOBILE LIGHT MODE — CSS variable swap
+       ════════════════════════════════════════ */
+    html.light #mobileApp {
+      background: #f5f5f7 !important;
+      color: #1d1d1f !important;
+      --m-bg: #f5f5f7;
+      --m-card: #ffffff;
+      --m-border: rgba(0,0,0,0.1);
+      --m-accent: #6366f1;
+      --m-accent2: #4f46e5;
+      --m-text: #1d1d1f;
+      --m-sub: #6e6e73;
+      --m-muted: #86868b;
+      --m-danger: #dc2626;
+    }
+    html.light #mTopBar {
+      background: rgba(245,245,247,0.92) !important;
+      border-bottom-color: rgba(0,0,0,0.1) !important;
+    }
+    html.light #mTopBar .m-logo {
+      background: linear-gradient(135deg,#4f46e5,#7c3aed) !important;
+      -webkit-background-clip: text !important; -webkit-text-fill-color: transparent !important;
+      background-clip: text !important;
+    }
+    html.light #mThemeBtn {
+      background: rgba(0,0,0,0.05) !important;
+      border-color: rgba(0,0,0,0.1) !important;
+      color: #6e6e73 !important;
+    }
+    html.light #mBottomNav {
+      background: rgba(245,245,247,0.92) !important;
+      border-top-color: rgba(0,0,0,0.1) !important;
+    }
+    html.light .mNavBtn { color: #aeaeb2 !important; }
+    html.light .mNavBtn.mNavActive { color: #6366f1 !important; }
+    html.light .mNavBtn.mNavActive svg { stroke: #6366f1 !important; }
+    html.light .mPage { background: #f5f5f7 !important; }
+    html.light .mCard {
+      background: #ffffff !important;
+      border-color: rgba(0,0,0,0.08) !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04) !important;
+    }
+    html.light .mSection-title { color: #86868b !important; }
+    html.light .mLabel { color: #6e6e73 !important; }
+    html.light .mInput {
+      background: #ffffff !important;
+      border-color: #d2d2d7 !important;
+      color: #1d1d1f !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    html.light .mInput:focus { border-color: #6366f1 !important; box-shadow: 0 0 0 3px rgba(99,102,241,0.12) !important; }
+    html.light .mInput::placeholder { color: #aeaeb2 !important; }
+    html.light .mChip {
+      background: #ffffff !important;
+      border-color: #d2d2d7 !important;
+      color: #6e6e73 !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    html.light .mChip.mChipActive {
+      background: rgba(99,102,241,0.08) !important;
+      border-color: #6366f1 !important;
+      color: #4f46e5 !important;
+    }
+    html.light .mSelect {
+      background: #ffffff !important;
+      border-color: #d2d2d7 !important;
+      color: #1d1d1f !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+    }
+    html.light .mSizeBtn {
+      background: #ffffff !important;
+      border-color: #d2d2d7 !important;
+      color: #1d1d1f !important;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+    }
+    html.light .mSizeBtn .mSizeDesc { color: #86868b !important; }
+    html.light .mSizeBtn.mSizeActive {
+      background: linear-gradient(135deg,#6366f1,#4f46e5) !important;
+      border-color: #6366f1 !important;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.28) !important;
+    }
+    html.light .mSizeBtn.mSizeActive .mSizeDesc { color: rgba(255,255,255,0.8) !important; }
+    html.light .mGenBtn {
+      box-shadow: 0 6px 24px rgba(99,102,241,0.32) !important;
+    }
+    html.light .mHistoryItem { border-bottom-color: rgba(0,0,0,0.07) !important; }
+    html.light .mHistoryItem:active { background: rgba(99,102,241,0.06) !important; }
+    html.light .mHistoryTitle { color: #1d1d1f !important; }
+    html.light .mHistoryMeta { color: #86868b !important; }
+    html.light .mEmptyState { color: #86868b !important; }
+    html.light .mAccountCard {
+      background: #ffffff !important;
+      border-color: rgba(0,0,0,0.08) !important;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.07) !important;
+    }
+    html.light .mPlanBadge {
+      background: rgba(99,102,241,0.08) !important;
+      border-color: rgba(99,102,241,0.25) !important;
+      color: #4f46e5 !important;
+    }
+    html.light .mProgressBar { background: rgba(0,0,0,0.08) !important; }
+    html.light .mLogoutBtn {
+      border-color: #d2d2d7 !important;
+      color: #6e6e73 !important;
+    }
+    html.light .mLogoutBtn:hover { border-color: #dc2626 !important; color: #dc2626 !important; }
+    html.light #mResultOverlay { background: #f5f5f7 !important; }
+    html.light #mResultTopBar {
+      background: rgba(245,245,247,0.95) !important;
+      border-bottom-color: rgba(0,0,0,0.1) !important;
+    }
+    html.light #mResultTopBar button {
+      background: rgba(0,0,0,0.05) !important;
+      border-color: rgba(0,0,0,0.1) !important;
+      color: #6e6e73 !important;
+    }
+    html.light #mResultTopBar button:hover { background: rgba(0,0,0,0.09) !important; }
+    html.light .mResultTitle { color: #1d1d1f !important; }
+    html.light .mLimitBanner {
+      background: linear-gradient(135deg,rgba(99,102,241,0.07),rgba(67,56,202,0.04)) !important;
+      border-color: rgba(99,102,241,0.25) !important;
+    }
+    html.light .mError { background: rgba(220,38,38,0.07) !important; border-color: rgba(220,38,38,0.2) !important; color: #dc2626 !important; }
+
+    /* ── Inline-style color overrides for mobile account section ── */
+    html.light #mobileApp [style*="color:#f1f5f9"] { color: #1d1d1f !important; }
+    html.light #mobileApp [style*="color:#6b7280"] { color: #86868b !important; }
+    html.light #mobileApp [style*="color:#94a3b8"] { color: #6e6e73 !important; }
+    html.light #mobileApp [style*="color:#a5b4fc"] { color: #4f46e5 !important; }
+    html.light #mobileApp [style*="background:rgba(10,10,20"] { background: rgba(245,245,247,0.95) !important; }
+    /* Sidebar inline-style overrides */
+    html.light #desktopApp [style*="color:#f1f5f9"],
+    html.light #desktopApp [style*="color:#e2e8f0"],
+    html.light #desktopApp [style*="color:#d1d5db"] { color: #1d1d1f !important; }
+    html.light #desktopApp [style*="color:#6b7280"] { color: #86868b !important; }
+    html.light #desktopApp [style*="color:#9ca3af"] { color: #86868b !important; }
+    html.light #desktopApp [style*="color:#94a3b8"] { color: #6e6e73 !important; }
+    html.light #desktopApp [style*="background:linear-gradient(180deg,#0d0d22"] { background: #ffffff !important; }
 
     /* PRD Size Selector */
     .size-selector { display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
