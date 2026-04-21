@@ -171,5 +171,8 @@
     </div>
     <p class="text-gray-600 text-xs">2026 PRDGenius. Built for PMs, by a PM.</p>
   </footer>
+<script>
+(function(){var sid=sessionStorage.getItem('_pg_sid');if(!sid){sid=Math.random().toString(36).substr(2,16);sessionStorage.setItem('_pg_sid',sid);}var t0=Date.now();fetch('/api/analytics/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,path:location.pathname,referrer:document.referrer})});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){navigator.sendBeacon('/api/analytics/duration',JSON.stringify({session_id:sid,duration:Math.round((Date.now()-t0)/1000)}));}});})();
+</script>
 </body>
 </html>

@@ -179,6 +179,12 @@
     /* ── Section labels ── */
     html.light .fmt-section-label { color: #86868b !important; }
 
+    /* ── Transcript upload ── */
+    html.light #transcriptDropzone { border-color: #d2d2d7 !important; background: #fafafa; }
+    html.light #transcriptDropzone p { color: #6e6e73 !important; }
+    html.light #transcriptStatus { background: rgba(99,102,241,0.06) !important; border-color: rgba(99,102,241,0.2) !important; }
+    html.light #transcriptStatusText { color: #4f46e5 !important; }
+
     /* ════════════════════════════════════════
        MOBILE LIGHT MODE — CSS variable swap
        ════════════════════════════════════════ */
@@ -705,6 +711,26 @@
       <input class="mInput" id="mTargetUsers" type="text" placeholder="Target users (optional)" style="margin-bottom:10px"/>
       <textarea class="mInput" id="mContext" rows="2" placeholder="Additional context (optional)" style="resize:none;margin-bottom:10px"></textarea>
 
+      <!-- Transcript upload (mobile) -->
+      <div id="mTranscriptArea" style="margin-bottom:14px">
+        <input type="file" id="mTranscriptFile" accept=".vtt,.docx,.txt" style="display:none" onchange="mUploadTranscript()"/>
+        <button type="button" onclick="document.getElementById('mTranscriptFile').click()"
+          style="width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+                 background:rgba(255,255,255,0.04);border:1.5px dashed rgba(255,255,255,0.15);
+                 border-radius:12px;padding:11px;color:#6b7280;font-size:0.82rem;font-weight:600;cursor:pointer;">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+          </svg>
+          Import transcript (.vtt or .docx)
+        </button>
+        <div id="mTranscriptStatus" style="display:none;margin-top:8px;padding:10px 12px;
+          background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);
+          border-radius:10px;font-size:0.75rem;color:#a5b4fc;display:flex;align-items:center;gap:8px">
+          <span>✓</span><span id="mTranscriptStatusText"></span>
+          <button onclick="mClearTranscript()" style="margin-left:auto;background:none;border:none;color:#6b7280;cursor:pointer;font-size:0.75rem">✕ Clear</button>
+        </div>
+      </div>
+
       <!-- Company stage -->
       <select class="mSelect" id="mCompanyStage" style="margin-bottom:18px">
         <option value="Early-stage startup (pre-product market fit)">Early-stage startup (pre-PMF)</option>
@@ -1086,6 +1112,26 @@
           <p class="text-xs text-gray-600 mt-1">More context = more specific, credible PRD output.</p>
         </div>
 
+        <!-- Transcript upload (desktop) -->
+        <div class="mb-5">
+          <label class="block text-sm font-semibold text-gray-300 mb-2">Import Transcript <span class="text-gray-600 font-normal">(optional)</span></label>
+          <input type="file" id="transcriptFile" accept=".vtt,.docx,.txt" style="display:none" onchange="uploadTranscript()"/>
+          <div id="transcriptDropzone" onclick="document.getElementById('transcriptFile').click()"
+            style="border:2px dashed #374151;border-radius:12px;padding:16px;text-align:center;cursor:pointer;transition:all 0.2s"
+            onmouseenter="this.style.borderColor='#6366f1'" onmouseleave="this.style.borderColor='#374151'">
+            <div style="font-size:1.4rem;margin-bottom:4px">📎</div>
+            <p class="text-sm text-gray-400 font-medium">Click to upload a meeting transcript</p>
+            <p class="text-xs text-gray-600 mt-1">Supports .vtt, .docx, .txt — max 5 MB</p>
+          </div>
+          <div id="transcriptStatus" style="display:none;margin-top:8px;padding:10px 14px;
+            background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.25);border-radius:10px;
+            display:flex;align-items:center;gap:10px">
+            <span style="color:#a5b4fc;font-size:1rem">✓</span>
+            <span id="transcriptStatusText" style="font-size:0.82rem;color:#a5b4fc;flex:1"></span>
+            <button onclick="clearTranscript()" style="background:none;border:none;color:#6b7280;cursor:pointer;font-size:0.78rem;white-space:nowrap">✕ Clear</button>
+          </div>
+        </div>
+
         <div class="mb-5">
           <label class="block text-sm font-semibold text-gray-300 mb-2">PRD Size</label>
           <div class="size-selector">
@@ -1317,6 +1363,71 @@
 
     function printPDF() { window.print(); }
 
+    // ── Transcript upload (desktop) ──────────────────────────────────────
+    window._transcriptText  = '';
+    window._mTranscriptText = '';
+
+    async function uploadTranscript() {
+      const fileInput = document.getElementById('transcriptFile');
+      const file = fileInput.files[0];
+      if (!file) return;
+      const statusDiv  = document.getElementById('transcriptStatus');
+      const statusText = document.getElementById('transcriptStatusText');
+      statusDiv.style.display = 'flex';
+      statusText.textContent = 'Parsing transcript…';
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res  = await fetch('/api/parse-transcript', { method:'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Parse failed');
+        window._transcriptText = data.text;
+        statusText.textContent = `✓ ${file.name} — ${data.chars.toLocaleString()} characters extracted`;
+        // Pre-fill context if empty
+        const ctx = document.getElementById('context');
+        if (!ctx.value.trim()) ctx.value = data.text.slice(0, 600);
+      } catch(e) {
+        statusText.textContent = '⚠ ' + e.message;
+        window._transcriptText = '';
+      }
+    }
+
+    function clearTranscript() {
+      window._transcriptText = '';
+      document.getElementById('transcriptFile').value = '';
+      document.getElementById('transcriptStatus').style.display = 'none';
+    }
+
+    async function mUploadTranscript() {
+      const fileInput = document.getElementById('mTranscriptFile');
+      const file = fileInput.files[0];
+      if (!file) return;
+      const statusDiv  = document.getElementById('mTranscriptStatus');
+      const statusText = document.getElementById('mTranscriptStatusText');
+      statusDiv.style.display = 'flex';
+      statusText.textContent = 'Parsing…';
+      const fd = new FormData();
+      fd.append('file', file);
+      try {
+        const res  = await fetch('/api/parse-transcript', { method:'POST', body: fd });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Parse failed');
+        window._mTranscriptText = data.text;
+        statusText.textContent = `${file.name} — ${data.chars.toLocaleString()} chars`;
+        const ctx = document.getElementById('mContext');
+        if (!ctx.value.trim()) ctx.value = data.text.slice(0, 400);
+      } catch(e) {
+        statusText.textContent = '⚠ ' + e.message;
+        window._mTranscriptText = '';
+      }
+    }
+
+    function mClearTranscript() {
+      window._mTranscriptText = '';
+      document.getElementById('mTranscriptFile').value = '';
+      document.getElementById('mTranscriptStatus').style.display = 'none';
+    }
+
     document.getElementById('prdForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn      = document.getElementById('generateBtn');
@@ -1365,7 +1476,8 @@
             product_name:  featureName,
             problem:       userProblem,
             target_users:  document.getElementById('targetUsers').value.trim(),
-            context:       document.getElementById('context').value.trim(),
+            context:       (document.getElementById('context').value.trim() || '') +
+                           (window._transcriptText ? '\n\n--- Transcript ---\n' + window._transcriptText : ''),
             company_stage: document.getElementById('companyStage').value,
             format_style:  document.getElementById('selectedFormat').value,
             prd_size:      document.getElementById('prdSize')?.value || 'medium',
@@ -1669,7 +1781,8 @@
             product_name:  featureName,
             problem:       userProblem,
             target_users:  document.getElementById('mTargetUsers').value.trim(),
-            context:       document.getElementById('mContext').value.trim(),
+            context:       (document.getElementById('mContext').value.trim() || '') +
+                           (window._mTranscriptText ? '\n\n--- Transcript ---\n' + window._mTranscriptText : ''),
             company_stage: document.getElementById('mCompanyStage').value,
             format_style:  mSelectedFmtVal,
             prd_size:      mSelectedSizeVal,
@@ -1721,5 +1834,6 @@
   <button class="theme-toggle no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
 </div><!-- #appLayout -->
 </div><!-- #desktopApp -->
+<script>(function(){var sid=sessionStorage.getItem('_pg_sid');if(!sid){sid=Math.random().toString(36).substr(2,16);sessionStorage.setItem('_pg_sid',sid);}var t0=Date.now();fetch('/api/analytics/visit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sid,path:location.pathname,referrer:document.referrer})});document.addEventListener('visibilitychange',function(){if(document.visibilityState==='hidden'){navigator.sendBeacon('/api/analytics/duration',JSON.stringify({session_id:sid,duration:Math.round((Date.now()-t0)/1000)}));}});})();</script>
 </body>
 </html>

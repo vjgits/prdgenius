@@ -1,12 +1,12 @@
 """
 PRDGenius – production FastAPI back-end
 """
-import io, os, re, uuid, json, hashlib, sqlite3, logging, asyncio
+import io, os, re, uuid, json, hashlib, sqlite3, logging, asyncio, ipaddress
 from datetime import datetime, timedelta
 from contextlib import asynccontextmanager
 from typing import Optional
 
-from fastapi import FastAPI, Request, Form, HTTPException
+from fastapi import FastAPI, Request, Form, HTTPException, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse, PlainTextResponse, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
@@ -113,6 +113,21 @@ def init_db():
     ]:
         if col not in user_cols:
             conn.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS analytics (
+            id         INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            path       TEXT NOT NULL DEFAULT '/',
+            os         TEXT NOT NULL DEFAULT '',
+            device     TEXT NOT NULL DEFAULT '',
+            browser    TEXT NOT NULL DEFAULT '',
+            referrer   TEXT NOT NULL DEFAULT '',
+            duration   INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_analytics_created ON analytics(created_at);
+        CREATE INDEX IF NOT EXISTS idx_analytics_session ON analytics(session_id);
+    """)
     conn.commit()
     admin_email = "admin@prdgenius.ai"
     admin_pw    = hash_password("Chocolate47##")
@@ -173,6 +188,48 @@ def reset_credits_if_new_month(user: dict, conn) -> dict:
         row = conn.execute("SELECT * FROM users WHERE id=?", (user["id"],)).fetchone()
         return dict(row) if row else user
     return user
+
+# ─── User-Agent parser (no deps — regex only) ────────────────────────────────
+def parse_ua(ua: str) -> dict:
+    ua = ua or ""
+    # OS
+    if "Windows" in ua:
+        os_name = "Windows"
+    elif "Mac OS X" in ua and "iPhone" not in ua and "iPad" not in ua:
+        os_name = "macOS"
+    elif "iPhone" in ua:
+        os_name = "iOS"
+    elif "iPad" in ua:
+        os_name = "iPadOS"
+    elif "Android" in ua:
+        os_name = "Android"
+    elif "Linux" in ua:
+        os_name = "Linux"
+    elif "CrOS" in ua:
+        os_name = "ChromeOS"
+    else:
+        os_name = "Other"
+    # Device
+    if "Mobile" in ua or "iPhone" in ua or "Android" in ua and "Mobile" in ua:
+        device = "Mobile"
+    elif "iPad" in ua or "Tablet" in ua:
+        device = "Tablet"
+    else:
+        device = "Desktop"
+    # Browser
+    if "Edg/" in ua or "Edge/" in ua:
+        browser = "Edge"
+    elif "OPR/" in ua or "Opera" in ua:
+        browser = "Opera"
+    elif "Chrome/" in ua and "Chromium" not in ua:
+        browser = "Chrome"
+    elif "Firefox/" in ua:
+        browser = "Firefox"
+    elif "Safari/" in ua and "Chrome" not in ua:
+        browser = "Safari"
+    else:
+        browser = "Other"
+    return {"os": os_name, "device": device, "browser": browser}
 
 # ─── Security Middleware ──────────────────────────────────────────────────────
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -332,6 +389,153 @@ async def admin_page(request: Request):
     if not user or user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Forbidden")
     return templates.TemplateResponse("admin.html", {"request": request, "user": user})
+
+# ─── Analytics API ────────────────────────────────────────────────────────────
+@app.post("/api/analytics/visit")
+async def analytics_visit(request: Request):
+    try:
+        body       = await request.json()
+        session_id = body.get("session_id", "")[:64]
+        path       = body.get("path", "/")[:128]
+        referrer   = body.get("referrer", "")[:256]
+        ua_str     = request.headers.get("user-agent", "")
+        parsed     = parse_ua(ua_str)
+        conn       = get_db()
+        # Only record once per session per path (dedup re-renders)
+        existing = conn.execute(
+            "SELECT id FROM analytics WHERE session_id=? AND path=? AND created_at > datetime('now','-30 minutes')",
+            (session_id, path)
+        ).fetchone()
+        if not existing:
+            conn.execute(
+                "INSERT INTO analytics (session_id, path, os, device, browser, referrer) VALUES (?,?,?,?,?,?)",
+                (session_id, path, parsed["os"], parsed["device"], parsed["browser"], referrer)
+            )
+            conn.commit()
+        conn.close()
+    except Exception:
+        pass
+    return Response(status_code=204)
+
+@app.post("/api/analytics/duration")
+async def analytics_duration(request: Request):
+    try:
+        body       = await request.json()
+        session_id = body.get("session_id", "")[:64]
+        duration   = min(int(body.get("duration", 0)), 7200)  # cap at 2h
+        if session_id and duration > 0:
+            conn = get_db()
+            conn.execute(
+                "UPDATE analytics SET duration=? WHERE session_id=? AND duration=0 ORDER BY id DESC LIMIT 1",
+                (duration, session_id)
+            )
+            conn.commit(); conn.close()
+    except Exception:
+        pass
+    return Response(status_code=204)
+
+@app.get("/api/admin/analytics")
+async def admin_analytics(request: Request, days: int = 30):
+    user = get_current_user(request)
+    if not user or user.get("role") != "admin":
+        raise HTTPException(status_code=403)
+    conn = get_db()
+    since = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+    # Daily visits
+    daily = conn.execute(
+        "SELECT date(created_at) as day, COUNT(DISTINCT session_id) as visits "
+        "FROM analytics WHERE created_at >= ? GROUP BY day ORDER BY day",
+        (since,)
+    ).fetchall()
+    # OS breakdown
+    os_rows = conn.execute(
+        "SELECT os, COUNT(DISTINCT session_id) as cnt FROM analytics WHERE created_at >= ? GROUP BY os ORDER BY cnt DESC",
+        (since,)
+    ).fetchall()
+    # Device breakdown
+    dev_rows = conn.execute(
+        "SELECT device, COUNT(DISTINCT session_id) as cnt FROM analytics WHERE created_at >= ? GROUP BY device ORDER BY cnt DESC",
+        (since,)
+    ).fetchall()
+    # Browser breakdown
+    br_rows = conn.execute(
+        "SELECT browser, COUNT(DISTINCT session_id) as cnt FROM analytics WHERE created_at >= ? GROUP BY browser ORDER BY cnt DESC",
+        (since,)
+    ).fetchall()
+    # Top pages
+    page_rows = conn.execute(
+        "SELECT path, COUNT(*) as cnt FROM analytics WHERE created_at >= ? GROUP BY path ORDER BY cnt DESC LIMIT 10",
+        (since,)
+    ).fetchall()
+    # Summary
+    total_sessions = conn.execute(
+        "SELECT COUNT(DISTINCT session_id) FROM analytics WHERE created_at >= ?", (since,)
+    ).fetchone()[0]
+    total_visits = conn.execute(
+        "SELECT COUNT(*) FROM analytics WHERE created_at >= ?", (since,)
+    ).fetchone()[0]
+    avg_duration = conn.execute(
+        "SELECT AVG(duration) FROM analytics WHERE created_at >= ? AND duration > 0", (since,)
+    ).fetchone()[0] or 0
+    conn.close()
+    return JSONResponse({
+        "summary": {
+            "total_sessions": total_sessions,
+            "total_visits": total_visits,
+            "avg_duration": round(avg_duration),
+        },
+        "daily":   [{"day": r["day"],    "visits": r["visits"]} for r in daily],
+        "os":      [{"name": r["os"],    "count": r["cnt"]}     for r in os_rows],
+        "device":  [{"name": r["device"],"count": r["cnt"]}     for r in dev_rows],
+        "browser": [{"name": r["browser"],"count": r["cnt"]}    for r in br_rows],
+        "pages":   [{"path": r["path"],  "count": r["cnt"]}     for r in page_rows],
+    })
+
+# ─── Transcript parse API ──────────────────────────────────────────────────────
+@app.post("/api/parse-transcript")
+async def parse_transcript(request: Request, file: UploadFile = File(...)):
+    user = get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401)
+    filename = (file.filename or "").lower()
+    content  = await file.read()
+    if len(content) > 5 * 1024 * 1024:  # 5 MB limit
+        return JSONResponse({"error": "File too large (max 5 MB)"}, status_code=400)
+    try:
+        if filename.endswith(".vtt"):
+            text = content.decode("utf-8", errors="ignore")
+            # Strip WEBVTT header, timestamps, NOTE blocks, blank lines
+            lines = text.splitlines()
+            clean = []
+            for line in lines:
+                line = line.strip()
+                if not line: continue
+                if line.startswith("WEBVTT"): continue
+                if line.startswith("NOTE"): continue
+                if re.match(r"^\d{2}:\d{2}:\d{2}[.,]\d{3}\s+-->\s+", line): continue
+                if re.match(r"^\d+$", line): continue  # cue index numbers
+                # Strip speaker labels like "Speaker 1: " or "[Speaker]: "
+                line = re.sub(r"^\[?[A-Za-z0-9 _]+\]?:\s*", "", line)
+                if line:
+                    clean.append(line)
+            extracted = " ".join(clean)
+        elif filename.endswith(".docx"):
+            from docx import Document as DocxDocument
+            import io as _io
+            doc = DocxDocument(_io.BytesIO(content))
+            extracted = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
+        elif filename.endswith(".txt"):
+            extracted = content.decode("utf-8", errors="ignore")
+        else:
+            return JSONResponse({"error": "Unsupported file type. Upload .vtt or .docx"}, status_code=400)
+        # Trim to 8000 chars to avoid token overload
+        extracted = extracted[:8000].strip()
+        if not extracted:
+            return JSONResponse({"error": "Could not extract text from file"}, status_code=400)
+        return JSONResponse({"text": extracted, "chars": len(extracted)})
+    except Exception as e:
+        logger.error(f"Transcript parse error: {e}")
+        return JSONResponse({"error": "Failed to parse file"}, status_code=500)
 
 # ─── Auth API ─────────────────────────────────────────────────────────────────
 @app.post("/api/signup")
@@ -917,6 +1121,6 @@ async def admin_stats(request: Request):
     conn.close()
     return JSONResponse({
         "total_users": total_users, "pro_users": pro_users,
-        "total_prds": total_prds,   "mrr": pro_users * 20,
+        "total_prds": total_prds,   "mrr": pro_users * 9.99,
         "users": recent_users,      "prds": recent_prds
     })
