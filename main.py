@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 
 from fastapi import FastAPI, Request, Form, HTTPException
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse, PlainTextResponse, Response
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -48,9 +48,11 @@ DB_PATH                = os.getenv("DB_PATH", "/data/prd_genius.db")
 PASSWORD_SALT          = os.getenv("PASSWORD_SALT", "prdgenius_s3cur3_s4lt_2024")
 PRODUCTION             = os.getenv("PRODUCTION", "false").lower() == "true"
 # Credit system — Brief=3 / Medium=4 / Extensive=6 per PRD
-CREDIT_COST  = {"brief": 3, "medium": 4, "extensive": 6}
-FREE_CREDITS = 6    # 2 Brief / 1 Medium+Brief / 1 Extensive
-PRO_CREDITS  = 120  # 40 Brief / 30 Medium / 20 Extensive
+CREDIT_COST   = {"brief": 3, "medium": 4, "extensive": 6}
+FREE_CREDITS  = 6    # enough for 1 PRD of any size (enforced by FREE_PRD_LIMIT below)
+FREE_PRD_LIMIT = 1   # free users get exactly 1 PRD total
+FREE_FORMATS = ["microsoft", "tesla", "linear"]  # formats available on free plan
+PRO_CREDITS   = 120  # 40 Brief / 30 Medium / 20 Extensive
 stripe.api_key         = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_PUBLISHABLE_KEY = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
 STRIPE_WEBHOOK_SECRET  = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -228,6 +230,40 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True,
                    allow_methods=["GET","POST","DELETE"], allow_headers=["*"])
 templates = Jinja2Templates(directory="templates")
 
+# ─── SEO ──────────────────────────────────────────────────────────────────────
+SITE_URL = "https://prdgenius.up.railway.app"
+
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots():
+    return "\n".join([
+        "User-agent: *",
+        "Allow: /",
+        "Disallow: /api/",
+        "Disallow: /app",
+        "Disallow: /prd/",
+        f"Sitemap: {SITE_URL}/sitemap.xml",
+    ])
+
+@app.get("/sitemap.xml")
+async def sitemap():
+    urls = [
+        {"loc": SITE_URL + "/",        "priority": "1.0", "changefreq": "weekly"},
+        {"loc": SITE_URL + "/signup",  "priority": "0.9", "changefreq": "monthly"},
+        {"loc": SITE_URL + "/login",   "priority": "0.5", "changefreq": "monthly"},
+    ]
+    lines = ['<?xml version="1.0" encoding="UTF-8"?>',
+             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for u in urls:
+        lines += [
+            "  <url>",
+            f"    <loc>{u['loc']}</loc>",
+            f"    <priority>{u['priority']}</priority>",
+            f"    <changefreq>{u['changefreq']}</changefreq>",
+            "  </url>",
+        ]
+    lines.append("</urlset>")
+    return Response("\n".join(lines), media_type="application/xml")
+
 # ─── Pages ────────────────────────────────────────────────────────────────────
 @app.get("/", response_class=HTMLResponse)
 async def landing(request: Request):
@@ -251,14 +287,17 @@ async def app_page(request: Request):
     if not user: return RedirectResponse("/login")
     conn = get_db()
     user = reset_credits_if_new_month(user, conn)
+    history_limit = 40 if user.get("plan") in ("pro", "admin", "yearly") else 5
     prds = [dict(p) for p in conn.execute(
-        "SELECT * FROM prds WHERE user_id=? ORDER BY created_at DESC LIMIT 20", (user["id"],)
+        "SELECT * FROM prds WHERE user_id=? ORDER BY created_at DESC LIMIT ?", (user["id"], history_limit)
     ).fetchall()]
     conn.close()
     credit_limit    = get_credit_limit(user)
     credits_used    = user.get("credits_used", 0)
     credits_remaining = max(0, credit_limit - credits_used)
-    at_limit = credits_remaining < 3  # can't afford even a Brief
+    is_free = user.get("plan", "free") not in ("pro", "admin", "yearly")
+    at_limit = (is_free and user.get("prds_used_this_month", 0) >= FREE_PRD_LIMIT) or \
+               (not is_free and credits_remaining < 3)
     return templates.TemplateResponse("app.html", {
         "request": request, "user": user, "prds": prds,
         "last_prd": prds[0] if prds else None,
@@ -269,6 +308,7 @@ async def app_page(request: Request):
         "stripe_pub_key": STRIPE_PUBLISHABLE_KEY,
         "free_credits": FREE_CREDITS,
         "pro_credits": PRO_CREDITS,
+        "free_formats": FREE_FORMATS,
     })
 
 @app.get("/upgrade", response_class=HTMLResponse)
@@ -422,10 +462,18 @@ async def generate_prd(request: Request):
     credit_limit      = get_credit_limit(user)
     credits_used      = user.get("credits_used", 0)
     credits_remaining = credit_limit - credits_used
-    if credits_remaining < credit_cost:
-        is_free = user.get("plan", "free") not in ("pro", "admin", "yearly")
+    is_free = user.get("plan", "free") not in ("pro", "admin", "yearly")
+    free_limit_hit = is_free and user.get("prds_used_this_month", 0) >= FREE_PRD_LIMIT
+    if free_limit_hit or credits_remaining < credit_cost:
         return JSONResponse(
             {"error": "You've reached your PRD limit for this month.", "upgrade": is_free},
+            status_code=403
+        )
+
+    # Free users restricted to 3 formats
+    if is_free and format_style not in FREE_FORMATS:
+        return JSONResponse(
+            {"error": "This PRD format is only available on the Pro plan. Upgrade to access all 24 formats.", "upgrade": True},
             status_code=403
         )
 
@@ -622,16 +670,34 @@ async def generate_prd(request: Request):
     }
     max_tok, words_per_section = size_config[prd_size]
 
-    sections_list = """1. Executive Summary
-2. Problem Statement & Background
-3. Goals & Success Metrics
-4. User Personas & Target Audience
-5. Feature Requirements (P0/P1/P2 priority)
-6. User Stories
-7. Technical Considerations
-8. Timeline & Milestones
-9. Risks & Mitigations
-10. Open Questions"""
+    # Each format gets unique section headings — this is what makes outputs genuinely different
+    format_sections_map = {
+        "google": """1. Executive Summary\n2. Problem Statement & Background\n3. Goals & Key Results (OKRs)\n4. User Personas & Target Audience\n5. Feature Requirements (P0 / P1 / P2)\n6. User Stories\n7. Technical Considerations\n8. Launch Plan & Timeline\n9. Risks & Mitigations\n10. Open Questions""",
+        "amazon": """1. Press Release (customer-facing announcement)\n2. Customer FAQ\n3. Internal / Business FAQ\n4. Customer Personas\n5. Working Backwards Requirements\n6. Feature Specification\n7. Success Metrics (customer outcomes)\n8. Implementation & Dependencies\n9. Risks & Open Questions\n10. Working Backwards Checklist""",
+        "linear": """1. Problem\n2. Why Now\n3. Proposed Solution\n4. Out of Scope\n5. User Stories (as sprint tickets)\n6. Acceptance Criteria\n7. Technical Notes & Dependencies\n8. Success Metrics\n9. Timeline & Milestones\n10. Open Questions""",
+        "jtbd": """1. Job Story Overview\n2. Functional Jobs (core tasks)\n3. Emotional Jobs (how users want to feel)\n4. Social Jobs (how users want to be perceived)\n5. Job Map (step-by-step execution)\n6. Opportunity Analysis (underserved outcomes)\n7. Solution Requirements (anchored to jobs)\n8. Success Metrics (outcome-based only)\n9. Constraints & Assumptions\n10. Open Questions""",
+        "hypothesis": """1. Problem Hypothesis\n2. Customer Segment & Early Adopters\n3. Value Proposition Hypothesis\n4. Feature Bets (each as a testable hypothesis)\n5. Riskiest Assumptions\n6. Experiment Design & Test Plan\n7. Minimum Viable Scope\n8. Success & Failure Criteria\n9. Learning Plan & Pivot Triggers\n10. Open Questions""",
+        "rfc": """1. Summary & Motivation\n2. Background & Prior Art\n3. Proposed Design (with alternatives considered)\n4. System Architecture & Data Models\n5. API Contracts & Interface Definitions\n6. Performance, Scalability & SLOs\n7. Security & Privacy Considerations\n8. Migration, Rollback & Operational Plan\n9. Open Questions & Decisions Needed\n10. References""",
+        "apple": """1. Vision & Experience Narrative\n2. Customer Problem (told as a story)\n3. Design Principles & Hard Constraints\n4. Core Experience Definition\n5. Feature Scope (what's in — and explicitly out)\n6. Privacy, Security & Ecosystem Fit\n7. Platform & Ecosystem Integration\n8. Quality Bar & Performance Requirements\n9. Launch Readiness Criteria\n10. Open Questions""",
+        "microsoft": """1. Executive Summary & Business Justification\n2. Customer & IT Admin Requirements\n3. Compliance, Security & Accessibility (WCAG, SOC2, ISO 27001)\n4. Feature Requirements\n5. Microsoft 365 / Azure / Teams Integration\n6. Technical Architecture & Compatibility\n7. Deployment, Admin Controls & Change Management\n8. Success Metrics (end-user NPS + IT admin adoption)\n9. Risks & Dependencies\n10. Open Questions""",
+        "meta": """1. Executive Summary\n2. Social Graph & Network Effect Opportunity\n3. User Personas & Behavioral Signals\n4. Feature Requirements\n5. A/B Testing & Experiment Design Plan\n6. Engagement & Viral Mechanics\n7. Algorithmic Distribution Implications\n8. Success Metrics (DAU, MAU, Engagement Rate, k-factor)\n9. Risks & Mitigations\n10. Open Questions""",
+        "nvidia": """1. Executive Summary\n2. Performance Specification (TFLOPS, latency, bandwidth, power)\n3. Developer & Ecosystem Requirements\n4. Feature Requirements\n5. CUDA / SDK / Toolchain Integration\n6. Hardware-Software Co-Design Constraints\n7. Benchmark & Competitive Analysis\n8. Developer Experience & Documentation Requirements\n9. Risks & Dependencies\n10. Open Questions""",
+        "openai": """1. Executive Summary\n2. Capability Requirements\n3. Safety Requirements (equal weight to capability)\n4. Red-Teaming & Misuse Vector Analysis\n5. Evaluation Benchmarks & Model Criteria\n6. Staged Rollout & Deployment Gates\n7. Responsible Use Policy Requirements\n8. Success Metrics (capability × safety)\n9. Risks & Open Questions\n10. What 'Ready to Ship' Means""",
+        "anthropic": """1. Executive Summary\n2. Product Capability Requirements\n3. Safety Case (harmlessness assessment)\n4. Honesty & Transparency Requirements\n5. Helpfulness Measures\n6. Constitutional AI Alignment Criteria\n7. Responsible Scaling Policy Implications\n8. Evaluation Criteria (capability + alignment)\n9. Epistemic Humility — What We Don't Yet Know\n10. Open Questions""",
+        "tesla": """1. Requirements Deletion Log (what was challenged and cut)\n2. First-Principles Problem Framing\n3. Product Specification (physics & economics justified)\n4. Software-Defined Feature Requirements\n5. OTA Update & Iteration Strategy\n6. Vertical Integration Requirements\n7. COGS Target & Cost Engineering\n8. Automation & Scale Plan\n9. Performance Benchmarks & Cycle Time Targets\n10. Open Questions""",
+        "mercedes": """1. Executive Summary\n2. Luxury Experience & Brand Requirements\n3. Safety Standards (ISO 26262, ASIL ratings)\n4. Feature Specifications\n5. Quality Validation Gates & Homologation\n6. Regulatory & Compliance Requirements\n7. Technical Architecture & Durability\n8. Long-Term Reliability KPIs\n9. Premium UX & Craftsmanship Standards\n10. Open Questions""",
+        "honda": """1. Executive Summary (Honda Way framing)\n2. Kaizen Baseline — Current State & Improvement Targets\n3. Customer Requirements (reliability-first)\n4. Feature Requirements\n5. Manufacturing Feasibility & Total Cost of Ownership\n6. Quality Standards (defect rate targets, serviceability)\n7. Global Regulatory Compliance\n8. Supplier & Supply Chain Requirements\n9. Risks & Continuous Improvement Plan\n10. Open Questions""",
+        "elililly": """1. Unmet Medical Need & Clinical Rationale\n2. Patient & Healthcare Provider Requirements\n3. Regulatory Strategy (FDA 21 CFR, ICH E6)\n4. Clinical Evidence Requirements (endpoints, safety)\n5. Pharmacovigilance Obligations\n6. Feature / Product Specifications\n7. Health Economics & Market Access (QALY, cost-effectiveness)\n8. Patient Outcome Metrics (north star)\n9. Risks & Regulatory Contingencies\n10. Open Questions""",
+        "novartis": """1. Unmet Medical Need\n2. Clinical Development Rationale\n3. Patient-Centricity Requirements (PRO instruments)\n4. Regulatory Pathway (FDA, EMA, PMDA)\n5. Product / Feature Specifications\n6. Medical Affairs & Real-World Evidence Strategy\n7. Pharmacovigilance & Safety Obligations\n8. Market Access Criteria\n9. Success Metrics (clinical outcomes + quality of life)\n10. Open Questions""",
+        "exxon": """1. Executive Summary\n2. HSE Impact Assessment (Health, Safety, Environment)\n3. Process Safety Requirements (OSHA PSM 1910.119)\n4. Operational Requirements\n5. Regulatory Compliance (EPA, FERC)\n6. CAPEX / OPEX Analysis\n7. Upstream / Downstream Integration\n8. ESG Reporting & Emissions Requirements\n9. Success Metrics (safety KPIs, efficiency, asset value)\n10. Open Questions""",
+        "chevron": """1. Executive Summary\n2. Safety & PSM Standards (non-negotiable)\n3. Environmental Stewardship Requirements\n4. Feature / Operational Requirements\n5. Energy Transition & Net-Zero Alignment\n6. CAPEX / OPEX & Supply Chain Analysis\n7. Regulatory Compliance\n8. ESG Impact Measurement Framework\n9. Success Metrics (TRIR, environmental KPIs, financial returns)\n10. Open Questions""",
+        "maersk": """1. Executive Summary\n2. Supply Chain Resilience Requirements\n3. End-to-End Visibility & Tracking Requirements\n4. Multi-Modal Integration (ocean, inland, air)\n5. Feature Specifications\n6. Decarbonisation Requirements (net-zero 2040)\n7. Trade Lane Economics & Operational KPIs\n8. Digital-Physical Integration Requirements\n9. Sustainability Metrics (CO2 per TEU-km)\n10. Open Questions""",
+        "jpmorgan": """1. Executive Summary\n2. Regulatory Compliance (Basel III, Dodd-Frank, MiFID II, GDPR)\n3. Risk Assessment & Financial Controls Design\n4. Feature Requirements\n5. Audit Trail & Model Risk Management\n6. Security & Fraud Prevention Architecture\n7. Operational Resilience Requirements\n8. Success Metrics (risk-adjusted returns, compliance adherence)\n9. Dependencies & Integration Requirements\n10. Open Questions""",
+        "visa": """1. Executive Summary\n2. Availability & Latency SLOs (99.999%, sub-100ms)\n3. Fraud Detection & Prevention Requirements\n4. Feature Specifications\n5. PCI-DSS, PSD2 & Tokenisation Architecture\n6. Global Regulatory Variation (EMV, local payment schemes)\n7. Authorization Rate & Acceptance Optimization\n8. Security Architecture Requirements\n9. Success Metrics (auth rate, fraud basis points, acceptance)\n10. Open Questions""",
+        "spacex": """1. First-Principles Problem Framing\n2. Requirements Deletion & Simplification Log\n3. Physics & Economics Justification\n4. Product Specifications (cost + performance targets)\n5. Reusability & Rapid Iteration Requirements\n6. Reliability & Safety (FMEA summary)\n7. Cost-Per-Unit Targets\n8. Manufacturing & Cycle Time Goals\n9. Success Metrics (cost, reliability, iteration speed)\n10. Open Questions""",
+        "boeing": """1. Executive Summary\n2. Airworthiness & Safety Requirements (FAA/EASA)\n3. DO-178C Software Criticality Levels (DAL A–E)\n4. System Redundancy Architecture\n5. Feature & Functional Requirements\n6. FMEA Summary (Failure Mode & Effects Analysis)\n7. Design Assurance Requirements\n8. Certification Timeline & Regulatory Milestones\n9. Traceability Matrix (requirement to test case)\n10. Open Questions""",
+    }
+    sections_list = format_sections_map.get(format_style, format_sections_map["google"])
 
     prompt = f"""You are an expert product manager writing a Product Requirements Document (PRD).
 

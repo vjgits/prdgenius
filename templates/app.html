@@ -82,6 +82,9 @@
     .fmt-card:hover { border-color:#6366f1; background:rgba(99,102,241,0.07); }
     .fmt-card.active { border-color:#6366f1; background:linear-gradient(135deg,rgba(99,102,241,0.18),rgba(67,56,202,0.08)); }
     .fmt-card.active .fmt-name { color:#a5b4fc; }
+    .fmt-locked { opacity: 0.45; cursor: not-allowed; }
+    .fmt-locked:hover { border-color: #374151 !important; background: rgba(17,24,39,0.6) !important; }
+    .fmt-lock-badge { position:absolute; bottom:7px; right:8px; font-size:0.58rem; color:#f59e0b; font-weight:700; background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.3); border-radius:4px; padding:1px 4px; }
     .fmt-icon { font-size:1.25rem; margin-bottom:3px; line-height:1; }
     .fmt-name { font-weight:700; font-size:0.78rem; color:#e2e8f0; line-height:1.2; }
     .fmt-sub  { font-size:0.65rem; color:#6b7280; margin-top:2px; line-height:1.3; }
@@ -142,6 +145,214 @@
     .dl-btn { transition:all 0.15s; }
     .dl-btn:hover { transform:translateY(-1px); }
 
+    /* ── Mobile layout — ID selectors beat Tailwind class selectors, no !important needed ── */
+    #appLayout { display:flex; min-height:100vh; }
+    #sidebarOverlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:999; }
+    #sidebarOverlay.active { display:block; }
+    @media (max-width: 768px) {
+      #appLayout { display:block; }
+      #mainSidebar { display:none !important; position:fixed; top:0; left:0; height:100vh;
+        width:280px; z-index:1000; overflow-y:auto; }
+      #mainSidebar.sidebar-open { display:flex !important; flex-direction:column;
+        transform:none; box-shadow:4px 0 24px rgba(0,0,0,0.6); }
+      #mobileMenuBtn { display:flex !important; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       MOBILE / DESKTOP SWITCHING — ID selectors,
+       Tailwind CDN never generates styles for these
+       ═══════════════════════════════════════════════ */
+    #desktopApp { display:flex; min-height:100vh; }
+    #mobileApp  { display:none; font-family:'Inter',sans-serif; background:#0a0a14; color:#f1f5f9; }
+    @media (max-width:768px) {
+      #desktopApp { display:none !important; }
+      #mobileApp  { display:block !important; }
+    }
+
+    /* ── Mobile design tokens ── */
+    #mobileApp {
+      --m-bg: #0a0a14;
+      --m-card: #111827;
+      --m-border: rgba(255,255,255,0.08);
+      --m-accent: #6366f1;
+      --m-accent2: #8b5cf6;
+      --m-text: #f1f5f9;
+      --m-sub: #94a3b8;
+      --m-muted: #4b5563;
+      --m-danger: #ef4444;
+      --m-topbar: 56px;
+      --m-botnav: 72px;
+    }
+
+    /* ── Top bar ── */
+    #mTopBar {
+      position: fixed; top:0; left:0; right:0; height:var(--m-topbar);
+      background: rgba(10,10,20,0.97); backdrop-filter:blur(12px);
+      border-bottom: 1px solid var(--m-border);
+      display: flex; align-items:center; justify-content:space-between;
+      padding: 0 18px; z-index: 100;
+    }
+    #mTopBar .m-logo { font-size:1.05rem; font-weight:800;
+      background:linear-gradient(135deg,#818cf8,#c084fc);
+      -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    #mTopBar .m-logo-dot { width:28px; height:28px; border-radius:8px;
+      background:linear-gradient(135deg,#6366f1,#8b5cf6);
+      display:inline-flex; align-items:center; justify-content:center;
+      color:#fff; font-weight:800; font-size:0.85rem; margin-right:8px; vertical-align:middle; }
+    #mThemeBtn { background:rgba(255,255,255,0.06); border:1px solid var(--m-border);
+      border-radius:50%; width:36px; height:36px; display:flex; align-items:center;
+      justify-content:center; cursor:pointer; font-size:1rem; color:var(--m-sub); }
+
+    /* ── Pages ── */
+    .mPage {
+      display: none; position:fixed;
+      top: var(--m-topbar); bottom: var(--m-botnav);
+      left:0; right:0; overflow-y:auto;
+      -webkit-overflow-scrolling: touch;
+      background: var(--m-bg);
+    }
+    .mPage.mActive { display:block; }
+
+    /* ── Bottom nav ── */
+    #mBottomNav {
+      position: fixed; bottom:0; left:0; right:0;
+      height: var(--m-botnav);
+      background: rgba(10,10,20,0.97); backdrop-filter:blur(12px);
+      border-top: 1px solid var(--m-border);
+      display: flex; align-items:center;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+      z-index: 100;
+    }
+    .mNavBtn {
+      flex:1; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; gap:3px; background:none; border:none;
+      color: var(--m-muted); cursor:pointer; padding:8px 0;
+      font-size:0.65rem; font-weight:600; letter-spacing:0.03em;
+      transition: color 0.15s;
+    }
+    .mNavBtn svg { width:22px; height:22px; }
+    .mNavBtn.mNavActive { color: var(--m-accent); }
+    .mNavBtn.mNavActive svg { stroke: var(--m-accent); }
+
+    /* ── Generate page ── */
+    .mSection { padding: 18px 16px 8px; }
+    .mSection-title { font-size:0.65rem; font-weight:700; color:var(--m-muted);
+      text-transform:uppercase; letter-spacing:0.08em; margin-bottom:10px; }
+    .mCard { background:var(--m-card); border:1px solid var(--m-border);
+      border-radius:16px; padding:16px; margin-bottom:12px; }
+    .mLabel { font-size:0.78rem; font-weight:600; color:var(--m-sub); margin-bottom:8px; display:block; }
+    .mInput { width:100%; background:rgba(255,255,255,0.04); border:1.5px solid var(--m-border);
+      border-radius:12px; padding:12px 14px; color:var(--m-text); font-size:0.9rem;
+      font-family:inherit; outline:none; transition:border-color 0.2s; box-sizing:border-box; }
+    .mInput:focus { border-color:var(--m-accent); }
+    .mInput::placeholder { color:var(--m-muted); }
+
+    /* Format chips — horizontal scroll */
+    .mFormatScroll { display:flex; gap:8px; overflow-x:auto; padding-bottom:6px;
+      -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+    .mFormatScroll::-webkit-scrollbar { display:none; }
+    .mChip { flex-shrink:0; display:flex; align-items:center; gap:6px;
+      background:rgba(255,255,255,0.04); border:1.5px solid var(--m-border);
+      border-radius:99px; padding:8px 14px; cursor:pointer; white-space:nowrap;
+      font-size:0.78rem; font-weight:600; color:var(--m-sub); transition:all 0.15s; }
+    .mChip:active { transform:scale(0.96); }
+    .mChip.mChipActive { background:rgba(99,102,241,0.15); border-color:var(--m-accent); color:#a5b4fc; }
+    .mChip.mChipLocked { opacity:0.4; cursor:not-allowed; }
+    .mChip .mChipIcon { font-size:1rem; }
+
+    /* Company dropdown */
+    .mSelect { width:100%; background:rgba(255,255,255,0.04); border:1.5px solid var(--m-border);
+      border-radius:12px; padding:12px 14px; color:var(--m-text); font-size:0.88rem;
+      font-family:inherit; outline:none; appearance:none; cursor:pointer; box-sizing:border-box; }
+    .mSelect:focus { border-color:var(--m-accent); }
+
+    /* Size selector */
+    .mSizeRow { display:flex; gap:8px; }
+    .mSizeBtn { flex:1; background:rgba(255,255,255,0.04); border:1.5px solid var(--m-border);
+      border-radius:12px; padding:12px 6px; text-align:center; cursor:pointer;
+      transition:all 0.15s; color:var(--m-text); }
+    .mSizeBtn:active { transform:scale(0.97); }
+    .mSizeBtn.mSizeActive { background:linear-gradient(135deg,#6366f1,#4f46e5); border-color:#6366f1; }
+    .mSizeBtn .mSizeIcon { font-size:1.4rem; margin-bottom:4px; }
+    .mSizeBtn .mSizeName { font-size:0.78rem; font-weight:700; display:block; }
+    .mSizeBtn .mSizeDesc { font-size:0.62rem; color:rgba(255,255,255,0.6); margin-top:2px; }
+
+    /* Generate button */
+    .mGenBtn { width:100%; padding:17px; border:none; border-radius:16px; cursor:pointer;
+      font-size:1rem; font-weight:800; color:#fff; letter-spacing:0.3px;
+      background:linear-gradient(135deg,#6366f1,#4f46e5);
+      box-shadow:0 8px 32px rgba(99,102,241,0.35); transition:all 0.2s;
+      display:flex; align-items:center; justify-content:center; gap:8px; }
+    .mGenBtn:active { transform:scale(0.98); box-shadow:none; }
+    .mGenBtn:disabled { opacity:0.6; cursor:not-allowed; transform:none; }
+
+    /* Error banner */
+    .mError { background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.3);
+      color:#fca5a5; border-radius:12px; padding:12px 14px; font-size:0.82rem;
+      margin-bottom:12px; display:none; }
+    .mLimitBanner { background:linear-gradient(135deg,rgba(99,102,241,0.12),rgba(67,56,202,0.08));
+      border:1px solid rgba(99,102,241,0.3); border-radius:16px; padding:16px;
+      margin:16px; display:none; }
+
+    /* ── Result overlay ── */
+    #mResultOverlay {
+      display:none; position:fixed; inset:0; z-index:200;
+      background:var(--m-bg); flex-direction:column;
+    }
+    #mResultOverlay.mResultOpen { display:flex; }
+    #mResultTopBar {
+      flex-shrink:0; display:flex; align-items:center; gap:10px;
+      padding:14px 16px; border-bottom:1px solid var(--m-border);
+      background:rgba(10,10,20,0.97); backdrop-filter:blur(12px);
+    }
+    #mResultTopBar button { background:rgba(255,255,255,0.07); border:1px solid var(--m-border);
+      border-radius:10px; padding:7px 13px; color:var(--m-sub); font-size:0.75rem;
+      font-weight:600; cursor:pointer; white-space:nowrap; }
+    #mResultTopBar .mResultTitle { flex:1; font-size:0.9rem; font-weight:700;
+      color:var(--m-text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    #mResultScroll { flex:1; overflow-y:auto; padding:20px 16px 40px;
+      -webkit-overflow-scrolling:touch; }
+
+    /* Streaming loader */
+    .mStreamLoader { display:flex; flex-direction:column; align-items:center;
+      justify-content:center; height:100%; gap:16px; }
+    .mSpinner { width:44px; height:44px; border:3px solid rgba(99,102,241,0.2);
+      border-top-color:#6366f1; border-radius:50%; animation:spin 0.9s linear infinite; }
+    .mStream-cursor { display:inline-block; width:2px; height:1em; background:#6366f1;
+      border-radius:1px; animation:blink 1s step-end infinite; vertical-align:text-bottom; margin-left:1px; }
+
+    /* ── History page ── */
+    .mHistoryItem { display:flex; align-items:flex-start; gap:12px;
+      padding:14px 16px; border-bottom:1px solid var(--m-border);
+      text-decoration:none; cursor:pointer; transition:background 0.15s; }
+    .mHistoryItem:active { background:rgba(99,102,241,0.08); }
+    .mHistoryDot { width:8px; height:8px; border-radius:50%; background:var(--m-accent);
+      margin-top:5px; flex-shrink:0; }
+    .mHistoryTitle { font-size:0.88rem; font-weight:600; color:var(--m-text); margin-bottom:3px; }
+    .mHistoryMeta { font-size:0.72rem; color:var(--m-muted); }
+    .mEmptyState { text-align:center; padding:60px 24px; color:var(--m-muted); }
+    .mEmptyState .mEmptyIcon { font-size:3rem; margin-bottom:12px; }
+    .mEmptyState p { font-size:0.9rem; }
+
+    /* ── Account page ── */
+    .mAccountCard { margin:16px; background:var(--m-card);
+      border:1px solid var(--m-border); border-radius:20px; padding:24px; }
+    .mPlanBadge { display:inline-flex; align-items:center; gap:6px;
+      background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3);
+      border-radius:99px; padding:4px 12px; font-size:0.75rem; font-weight:700; color:#a5b4fc;
+      margin-bottom:16px; }
+    .mProgressBar { height:6px; border-radius:99px; background:rgba(255,255,255,0.08);
+      margin:10px 0; overflow:hidden; }
+    .mProgressFill { height:100%; border-radius:99px;
+      background:linear-gradient(90deg,#6366f1,#8b5cf6); transition:width 0.3s; }
+    .mUpgradeBtn { width:100%; padding:15px; border:none; border-radius:14px; cursor:pointer;
+      font-size:0.95rem; font-weight:800; color:#fff; margin-top:16px;
+      background:linear-gradient(135deg,#6366f1,#7c3aed);
+      box-shadow:0 6px 24px rgba(99,102,241,0.35); }
+    .mLogoutBtn { width:100%; padding:13px; border:1px solid var(--m-border);
+      border-radius:14px; cursor:pointer; font-size:0.88rem; font-weight:600;
+      color:var(--m-sub); background:transparent; margin-top:10px; }
+
     @media print {
       aside, #generatorPanel, #upgradeGate, .no-print { display:none !important; }
       body { background:white !important; }
@@ -155,10 +366,226 @@
     }
   </style>
 </head>
-<body class="min-h-screen text-white flex">
+<body class="min-h-screen text-white">
+
+<!-- ═══════════════════════════ MOBILE UI ═══════════════════════════ -->
+<div id="mobileApp">
+
+  <!-- Top Bar -->
+  <div id="mTopBar">
+    <div>
+      <span class="m-logo-dot">P</span>
+      <span class="m-logo">PRDGenius</span>
+    </div>
+    <button id="mThemeBtn" onclick="toggleTheme()">🌙</button>
+  </div>
+
+  <!-- ── Page: Generate ── -->
+  <div id="mPage-generate" class="mPage mActive">
+    <div style="padding:16px 16px 100px">
+
+      {% if at_limit %}
+      <div class="mLimitBanner" style="display:block">
+        <p style="font-weight:700;color:#a5b4fc;margin-bottom:8px">🔒 Free PRD used</p>
+        <p style="font-size:0.82rem;color:#818cf8;margin-bottom:14px">Upgrade to Pro to generate up to 40 FAANG-quality PRDs every month.</p>
+        <button onclick="startUpgrade(event)" style="width:100%;padding:13px;border:none;border-radius:12px;background:linear-gradient(135deg,#6366f1,#7c3aed);color:#fff;font-weight:700;font-size:0.9rem;cursor:pointer">Upgrade to Pro — $9.99/mo</button>
+      </div>
+      {% endif %}
+
+      <div id="mGenError" class="mError"></div>
+      <div id="mLimitError" class="mError" style="background:rgba(99,102,241,0.1);border-color:rgba(99,102,241,0.3);color:#a5b4fc;"></div>
+
+      <!-- Format: By Methodology -->
+      <p class="mSection-title" style="margin-top:4px">By Methodology</p>
+      <div class="mFormatScroll" id="mFormatChips">
+        <div class="mChip mChipActive" data-fmt="google" onclick="mSelectFmt('google',this)"><span class="mChipIcon">🏢</span>Google</div>
+        <div class="mChip" data-fmt="amazon" onclick="mSelectFmt('amazon',this)"><span class="mChipIcon">📦</span>Amazon WB</div>
+        <div class="mChip" data-fmt="linear" onclick="mSelectFmt('linear',this)"><span class="mChipIcon">⚡</span>Linear</div>
+        <div class="mChip" data-fmt="jtbd" onclick="mSelectFmt('jtbd',this)"><span class="mChipIcon">🎯</span>JTBD</div>
+        <div class="mChip" data-fmt="hypothesis" onclick="mSelectFmt('hypothesis',this)"><span class="mChipIcon">🔬</span>Lean Hypo</div>
+        <div class="mChip" data-fmt="rfc" onclick="mSelectFmt('rfc',this)"><span class="mChipIcon">⚙️</span>RFC</div>
+      </div>
+
+      <!-- Format: By Company -->
+      <p class="mSection-title" style="margin-top:14px">By Company</p>
+      <select class="mSelect" id="mCompanySelect" onchange="mSelectCompany(this.value)">
+        <option value="">— Pick a company style —</option>
+        <optgroup label="🖥 Technology">
+          <option value="apple">Apple — Simplicity-first</option>
+          <option value="microsoft">Microsoft — Enterprise-grade</option>
+          <option value="nvidia">NVIDIA — Performance-first</option>
+          <option value="meta">Meta — Social & growth</option>
+          <option value="openai">OpenAI — Safety-aware</option>
+          <option value="anthropic">Anthropic — Responsible AI</option>
+        </optgroup>
+        <optgroup label="🚗 Automotive">
+          <option value="tesla">Tesla — First-principles</option>
+          <option value="mercedes">Mercedes — Luxury precision</option>
+          <option value="honda">Honda — Reliability-first</option>
+        </optgroup>
+        <optgroup label="💊 Pharmaceutical">
+          <option value="elililly">Eli Lilly — Patient outcomes</option>
+          <option value="novartis">Novartis — Clinical evidence</option>
+        </optgroup>
+        <optgroup label="⚡ Energy">
+          <option value="exxon">ExxonMobil — Safety & ops</option>
+          <option value="chevron">Chevron — ESG-aligned</option>
+        </optgroup>
+        <optgroup label="🏦 Finance">
+          <option value="jpmorgan">JPMorgan — Risk-first</option>
+          <option value="visa">Visa — Payments scale</option>
+        </optgroup>
+        <optgroup label="🚢 Logistics">
+          <option value="maersk">Maersk — Supply chain</option>
+        </optgroup>
+        <optgroup label="🚀 Aerospace">
+          <option value="spacex">SpaceX — Move fast</option>
+          <option value="boeing">Boeing — Safety-critical</option>
+        </optgroup>
+      </select>
+
+      <!-- Feature name -->
+      <p class="mSection-title" style="margin-top:18px">Feature Details</p>
+      <input class="mInput" id="mFeatureName" type="text" placeholder="Feature name (e.g. Smart Notifications)" style="margin-bottom:10px"/>
+      <textarea class="mInput" id="mUserProblem" rows="3" placeholder="User problem — what breaks today?" style="resize:none;margin-bottom:10px"></textarea>
+      <input class="mInput" id="mTargetUsers" type="text" placeholder="Target users (optional)" style="margin-bottom:10px"/>
+      <textarea class="mInput" id="mContext" rows="2" placeholder="Additional context (optional)" style="resize:none;margin-bottom:10px"></textarea>
+
+      <!-- Company stage -->
+      <select class="mSelect" id="mCompanyStage" style="margin-bottom:18px">
+        <option value="Early-stage startup (pre-product market fit)">Early-stage startup (pre-PMF)</option>
+        <option value="Growth-stage startup (post-PMF, scaling)" selected>Growth-stage startup (scaling)</option>
+        <option value="Series B/C company (optimizing and expanding)">Series B/C (optimizing)</option>
+        <option value="Late-stage or public company (enterprise scale)">Late-stage / Public company</option>
+      </select>
+
+      <!-- Size -->
+      <p class="mSection-title">PRD Size</p>
+      <div class="mSizeRow" style="margin-bottom:20px">
+        <div class="mSizeBtn" id="mSize-brief" onclick="mSelectSize('brief')">
+          <div class="mSizeIcon">📄</div>
+          <span class="mSizeName">Brief</span>
+          <span class="mSizeDesc">Essentials</span>
+        </div>
+        <div class="mSizeBtn mSizeActive" id="mSize-medium" onclick="mSelectSize('medium')">
+          <div class="mSizeIcon">📋</div>
+          <span class="mSizeName">Medium</span>
+          <span class="mSizeDesc">Balanced</span>
+        </div>
+        <div class="mSizeBtn" id="mSize-extensive" onclick="mSelectSize('extensive')">
+          <div class="mSizeIcon">📚</div>
+          <span class="mSizeName">Extensive</span>
+          <span class="mSizeDesc">Deep dive</span>
+        </div>
+      </div>
+
+      <input type="hidden" id="mSelectedFmt" value="google"/>
+      <input type="hidden" id="mSelectedSize" value="medium"/>
+
+      <button class="mGenBtn" id="mGenBtn" onclick="mGenerate()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Generate FAANG-Quality PRD
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Page: History ── -->
+  <div id="mPage-history" class="mPage">
+    <div style="padding:16px 0 80px">
+      {% if prds %}
+        {% for prd in prds %}
+        <a href="/prd/{{ prd.id }}" class="mHistoryItem">
+          <div class="mHistoryDot"></div>
+          <div>
+            <div class="mHistoryTitle">{{ prd.title }}</div>
+            <div class="mHistoryMeta">{{ prd.format_style }} · {{ prd.created_at[:10] }}</div>
+          </div>
+        </a>
+        {% endfor %}
+      {% else %}
+        <div class="mEmptyState">
+          <div class="mEmptyIcon">📝</div>
+          <p>No PRDs yet.<br/>Generate your first one!</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Page: Account ── -->
+  <div id="mPage-account" class="mPage">
+    <div style="padding:16px 16px 80px">
+      <div class="mAccountCard">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+          <div style="width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.2rem;color:#fff">{{ user.name[0].upper() }}</div>
+          <div>
+            <div style="font-weight:700;font-size:1rem;color:#f1f5f9">{{ user.name }}</div>
+            <div style="font-size:0.78rem;color:#6b7280">{{ user.email }}</div>
+          </div>
+        </div>
+
+        {% if user.plan == 'free' %}
+        <div class="mPlanBadge">Free Plan</div>
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#94a3b8;margin-bottom:4px">
+          <span>PRDs used</span><span style="color:{{ '#ef4444' if user.prds_used_this_month >= 1 else '#a5b4fc' }}">{{ user.prds_used_this_month }} / 1</span>
+        </div>
+        <div class="mProgressBar"><div class="mProgressFill" style="width:{{ [user.prds_used_this_month * 100, 100]|min }}%;background:{{ 'linear-gradient(90deg,#ef4444,#f87171)' if user.prds_used_this_month >= 1 else 'linear-gradient(90deg,#6366f1,#8b5cf6)' }}"></div></div>
+        <p style="font-size:0.72rem;color:#6b7280;margin-bottom:4px">3 of 24 formats included</p>
+        <button onclick="startUpgrade(event)" class="mUpgradeBtn">⚡ Upgrade to Pro — $9.99/mo</button>
+        {% else %}
+        <div class="mPlanBadge">✨ Pro Plan</div>
+        <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#94a3b8;margin-bottom:4px">
+          <span>PRDs this month</span><span style="color:#a5b4fc">{{ user.prds_used_this_month }} / 40</span>
+        </div>
+        <div class="mProgressBar"><div class="mProgressFill" style="width:{{ [credits_used / credit_limit * 100, 100]|min }}%"></div></div>
+        <p style="font-size:0.72rem;color:#6b7280">Up to 40 PRDs/month · All 24 formats</p>
+        {% endif %}
+
+        <form action="/api/logout" method="post">
+          <button type="submit" class="mLogoutBtn">Log out</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PRD Result Overlay ── -->
+  <div id="mResultOverlay">
+    <div id="mResultTopBar">
+      <button onclick="mCloseResult()">← Back</button>
+      <span class="mResultTitle" id="mResultTitle">Your PRD</span>
+      <button id="mCopyBtn" onclick="mCopyMD()">Copy MD</button>
+      <button id="mDocxBtn" onclick="mDownloadDocx()">Word</button>
+    </div>
+    <div id="mResultScroll">
+      <div id="mResultContent" class="prd-output"></div>
+    </div>
+  </div>
+
+  <!-- ── Overlay for future sidebar use (unused on mobile now) ── -->
+  <div id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- Bottom Nav -->
+  <div id="mBottomNav">
+    <button class="mNavBtn mNavActive" id="mNav-generate" onclick="mSwitchTab('generate')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+      New PRD
+    </button>
+    <button class="mNavBtn" id="mNav-history" onclick="mSwitchTab('history')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      History
+    </button>
+    <button class="mNavBtn" id="mNav-account" onclick="mSwitchTab('account')">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+      Account
+    </button>
+  </div>
+</div>
+<!-- ═══════════════════════════ END MOBILE UI ═══════════════════════════ -->
+
+<div id="desktopApp">
+<div id="appLayout">
 
   <!-- Sidebar -->
-  <aside class="w-64 flex flex-col h-screen sticky top-0 shrink-0" style="background:linear-gradient(180deg,#0d0d22 0%,#0a0a14 100%);border-right:1px solid rgba(255,255,255,0.07)">
+  <aside id="mainSidebar" class="w-64 flex flex-col h-screen shrink-0" style="position:sticky;top:0;background:linear-gradient(180deg,#0d0d22 0%,#0a0a14 100%);border-right:1px solid rgba(255,255,255,0.07)">
     <div class="p-5" style="border-bottom:1px solid rgba(255,255,255,0.07)">
       <a href="/" class="flex items-center gap-2.5">
         <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-sm shadow-lg" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">P</div>
@@ -183,17 +610,18 @@
       <div class="rounded-xl p-3 text-xs" style="background:rgba(67,56,202,0.1);border:1px solid rgba(99,102,241,0.2)">
         <div class="flex justify-between mb-1.5">
           <span class="text-indigo-300 font-medium">Free plan</span>
-          <span class="{{ 'text-red-400 font-semibold' if credits_remaining < 3 else 'text-indigo-300' }}">
-            {{ user.prds_used_this_month }} PRD{{ 's' if user.prds_used_this_month != 1 else '' }} generated
+          <span class="{{ 'text-red-400 font-semibold' if user.prds_used_this_month >= 1 else 'text-indigo-300' }}">
+            {{ user.prds_used_this_month }} / 1 PRD used
           </span>
         </div>
         <div class="rounded-full h-1.5 mb-3" style="background:rgba(31,41,55,0.8)">
-          <div class="h-1.5 rounded-full" style="width:{{ [credits_used / credit_limit * 100, 100]|min }}%;background:{{ 'linear-gradient(90deg,#ef4444,#f87171)' if credits_remaining < 3 else 'linear-gradient(90deg,#6366f1,#8b5cf6)' }}"></div>
+          <div class="h-1.5 rounded-full" style="width:{{ [user.prds_used_this_month * 100, 100]|min }}%;background:{{ 'linear-gradient(90deg,#ef4444,#f87171)' if user.prds_used_this_month >= 1 else 'linear-gradient(90deg,#6366f1,#8b5cf6)' }}"></div>
         </div>
         <a href="#" onclick="startUpgrade(event)" class="text-indigo-400 font-semibold hover:text-indigo-300 transition flex items-center gap-1">
           <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
           Upgrade to Pro — $9.99/mo
         </a>
+        <p class="text-gray-600 mt-1.5" style="font-size:0.65rem">3 of 24 formats included</p>
       </div>
       {% else %}
       <div class="rounded-xl p-3 text-xs" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35)">
@@ -246,8 +674,15 @@
     </div>
   </aside>
 
+  <div id="sidebarOverlay" onclick="closeSidebar()"></div>
+
   <!-- Main -->
   <main class="flex-1 min-h-screen overflow-y-auto">
+
+    <button id="mobileMenuBtn" onclick="toggleSidebar()" class="no-print" style="position:sticky;top:0;z-index:50;align-items:center;gap:8px;padding:12px 16px;background:rgba(10,10,20,0.97);border-bottom:1px solid rgba(255,255,255,0.08);width:100%;border:none;cursor:pointer;">
+      <svg width="22" height="22" fill="none" stroke="#e2e8f0" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+      <span style="font-size:0.9rem;font-weight:700;color:#e2e8f0;">PRDGenius</span>
+    </button>
 
     <!-- Generator -->
     <div id="generatorPanel" class="{{ 'hidden' if at_limit and last_prd else '' }} max-w-3xl mx-auto px-6 py-10">
@@ -475,9 +910,6 @@
             </h2>
           </div>
           <div class="flex gap-2 items-center">
-            <button onclick="editAndRegenerate()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium no-print" style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#818cf8;cursor:pointer">
-              ✏️ Edit & Regenerate
-            </button>
             <button onclick="copyMarkdown()" id="copyBtn"
               class="dl-btn flex items-center gap-1.5 text-gray-300 px-3 py-1.5 rounded-lg text-xs font-medium transition" style="background:rgba(31,41,55,0.8);border:1px solid rgba(55,65,81,0.8)">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
@@ -515,6 +947,8 @@
   <script>
     let rawMarkdown = '';
     let currentPrdId = null;
+    const FREE_FORMATS = {{ free_formats | tojson }};
+    const IS_FREE = {{ 'true' if user.plan == 'free' else 'false' }};
 
     {% if at_limit and last_prd %}
     // Auto-load the last PRD for free users at limit
@@ -526,7 +960,39 @@
     });
     {% endif %}
 
+    // Lock non-free formats for free users
+    document.addEventListener('DOMContentLoaded', function() {
+      if (IS_FREE) {
+        document.querySelectorAll('.fmt-card').forEach(card => {
+          if (!FREE_FORMATS.includes(card.dataset.format)) {
+            card.classList.add('fmt-locked');
+            const badge = document.createElement('span');
+            badge.className = 'fmt-lock-badge';
+            badge.textContent = '🔒 Pro';
+            card.appendChild(badge);
+          }
+        });
+        // Lock non-free options in company dropdown
+        const sel = document.getElementById('companyFormat');
+        if (sel) {
+          Array.from(sel.options).forEach(opt => {
+            if (opt.value && !FREE_FORMATS.includes(opt.value)) {
+              opt.text = '🔒 ' + opt.text;
+              opt.disabled = true;
+            }
+          });
+        }
+      }
+    });
+
     function selectFormat(fmt) {
+      if (IS_FREE && !FREE_FORMATS.includes(fmt)) {
+        // Show upgrade prompt instead of selecting
+        document.getElementById('genError').textContent = 'This format is Pro only. Upgrade to access all 24 formats.';
+        document.getElementById('genError').classList.remove('hidden');
+        return;
+      }
+      document.getElementById('genError').classList.add('hidden');
       document.getElementById('selectedFormat').value = fmt;
       document.querySelectorAll('.fmt-card').forEach(c => c.classList.toggle('active', c.dataset.format === fmt));
       // Reset company dropdown
@@ -536,6 +1002,14 @@
 
     function selectCompanyFormat(val) {
       if (!val) return;
+      if (IS_FREE && !FREE_FORMATS.includes(val)) {
+        // Show upgrade prompt instead of selecting
+        document.getElementById('genError').textContent = 'This format is Pro only. Upgrade to access all 24 formats.';
+        document.getElementById('genError').classList.remove('hidden');
+        document.getElementById('companyFormat').value = '';
+        return;
+      }
+      document.getElementById('genError').classList.add('hidden');
       document.getElementById('selectedFormat').value = val;
       // Clear methodology card highlights
       document.querySelectorAll('.fmt-card').forEach(c => c.classList.remove('active'));
@@ -729,6 +1203,16 @@
       document.getElementById('prdSize').value=size;
     }
 
+    // ── Mobile sidebar — pure CSS via #appLayout ID selector, JS just toggles a class ──
+    function toggleSidebar() {
+      document.getElementById('mainSidebar').classList.toggle('sidebar-open');
+      document.getElementById('sidebarOverlay').classList.toggle('active');
+    }
+    function closeSidebar() {
+      document.getElementById('mainSidebar').classList.remove('sidebar-open');
+      document.getElementById('sidebarOverlay').classList.remove('active');
+    }
+
     // ── Global tooltip for .fmt-tip badges ──
     (function() {
       const tip = document.createElement('div');
@@ -782,7 +1266,206 @@
       window.addEventListener('scroll', hideTip, true);
       window.addEventListener('resize', hideTip);
     })();
+
+    // ═══════════════════════════════════════════════
+    // MOBILE UI — tab switching, generate, etc.
+    // ═══════════════════════════════════════════════
+    const IS_FREE_M = {{ 'true' if user.plan == 'free' else 'false' }};
+    const FREE_FMT  = {{ free_formats | tojson }};
+    let mCurrentPrdId = null;
+    let mRawMarkdown  = '';
+    let mSelectedFmtVal = 'google';
+    let mSelectedSizeVal = 'medium';
+
+    // Lock non-free chips on mobile for free users
+    document.addEventListener('DOMContentLoaded', function() {
+      if (IS_FREE_M) {
+        document.querySelectorAll('#mFormatChips .mChip').forEach(chip => {
+          if (!FREE_FMT.includes(chip.dataset.fmt)) {
+            chip.classList.add('mChipLocked');
+            chip.querySelector('.mChipIcon').textContent = '🔒';
+          }
+        });
+        // Lock company options not in free formats
+        document.querySelectorAll('#mCompanySelect option').forEach(opt => {
+          if (opt.value && !FREE_FMT.includes(opt.value)) opt.disabled = true;
+        });
+      }
+    });
+
+    function mSwitchTab(tab) {
+      document.querySelectorAll('.mPage').forEach(p => p.classList.remove('mActive'));
+      document.querySelectorAll('.mNavBtn').forEach(b => b.classList.remove('mNavActive'));
+      document.getElementById('mPage-' + tab).classList.add('mActive');
+      document.getElementById('mNav-' + tab).classList.add('mNavActive');
+    }
+
+    function mSelectFmt(fmt, el) {
+      if (IS_FREE_M && !FREE_FMT.includes(fmt)) {
+        const err = document.getElementById('mGenError');
+        err.textContent = 'This format is Pro only. Upgrade for all 24 formats.';
+        err.style.display = 'block';
+        setTimeout(() => err.style.display = 'none', 3000);
+        return;
+      }
+      document.querySelectorAll('#mFormatChips .mChip').forEach(c => c.classList.remove('mChipActive'));
+      el.classList.add('mChipActive');
+      mSelectedFmtVal = fmt;
+      document.getElementById('mSelectedFmt').value = fmt;
+      document.getElementById('mCompanySelect').value = '';
+    }
+
+    function mSelectCompany(val) {
+      if (!val) return;
+      if (IS_FREE_M && !FREE_FMT.includes(val)) {
+        const err = document.getElementById('mGenError');
+        err.textContent = 'This company style is Pro only.';
+        err.style.display = 'block';
+        setTimeout(() => err.style.display = 'none', 3000);
+        document.getElementById('mCompanySelect').value = '';
+        return;
+      }
+      mSelectedFmtVal = val;
+      document.getElementById('mSelectedFmt').value = val;
+      document.querySelectorAll('#mFormatChips .mChip').forEach(c => c.classList.remove('mChipActive'));
+    }
+
+    function mSelectSize(size) {
+      document.querySelectorAll('.mSizeBtn').forEach(b => b.classList.remove('mSizeActive'));
+      document.getElementById('mSize-' + size).classList.add('mSizeActive');
+      mSelectedSizeVal = size;
+    }
+
+    function mCloseResult() {
+      document.getElementById('mResultOverlay').classList.remove('mResultOpen');
+    }
+
+    async function mCopyMD() {
+      try {
+        await navigator.clipboard.writeText(mRawMarkdown);
+        const btn = document.getElementById('mCopyBtn');
+        const orig = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = orig, 2000);
+      } catch(e) { alert('Copy failed. Please select manually.'); }
+    }
+
+    async function mDownloadDocx() {
+      if (!mCurrentPrdId) return;
+      const btn = document.getElementById('mDocxBtn');
+      btn.textContent = '...';
+      btn.disabled = true;
+      try {
+        const resp = await fetch('/api/prd/' + mCurrentPrdId + '/download');
+        if (!resp.ok) { const d = await resp.json(); throw new Error(d.detail); }
+        const blob = await resp.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        const cd   = resp.headers.get('Content-Disposition') || '';
+        const m    = cd.match(/filename="(.+)"/);
+        a.download = m ? m[1] : 'PRD.docx';
+        a.click();
+        URL.revokeObjectURL(url);
+      } catch(e) { alert('Download failed: ' + e.message); }
+      finally { btn.textContent = 'Word'; btn.disabled = false; }
+    }
+
+    async function mGenerate() {
+      const featureName = document.getElementById('mFeatureName').value.trim();
+      const userProblem = document.getElementById('mUserProblem').value.trim();
+      if (!featureName || !userProblem) {
+        const err = document.getElementById('mGenError');
+        err.textContent = 'Please enter a feature name and problem statement.';
+        err.style.display = 'block';
+        return;
+      }
+      document.getElementById('mGenError').style.display = 'none';
+      document.getElementById('mLimitError').style.display = 'none';
+
+      const btn = document.getElementById('mGenBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="mSpinner" style="width:20px;height:20px;border-width:2px;margin-right:8px"></span>Writing your PRD...';
+
+      // Show result overlay with loading state
+      const overlay   = document.getElementById('mResultOverlay');
+      const contentEl = document.getElementById('mResultContent');
+      const titleEl   = document.getElementById('mResultTitle');
+      titleEl.textContent  = featureName;
+      contentEl.innerHTML  = '<div class="mStreamLoader"><div class="mSpinner"></div><p style="color:#6b7280;font-size:0.85rem">Writing your PRD...</p></div>';
+      overlay.classList.add('mResultOpen');
+
+      let fullText = '';
+      let renderTimer = null;
+      function scheduleRender(final) {
+        if (renderTimer) clearTimeout(renderTimer);
+        if (final) {
+          contentEl.innerHTML = marked.parse(fullText);
+        } else {
+          renderTimer = setTimeout(() => {
+            contentEl.innerHTML = marked.parse(fullText) + '<span class="mStream-cursor"></span>';
+          }, 60);
+        }
+      }
+
+      try {
+        const res = await fetch('/api/generate', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            product_name:  featureName,
+            problem:       userProblem,
+            target_users:  document.getElementById('mTargetUsers').value.trim(),
+            context:       document.getElementById('mContext').value.trim(),
+            company_stage: document.getElementById('mCompanyStage').value,
+            format_style:  mSelectedFmtVal,
+            prd_size:      mSelectedSizeVal,
+          })
+        });
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          overlay.classList.remove('mResultOpen');
+          if (res.status === 403) {
+            document.getElementById('mLimitError').textContent = data.error || 'PRD limit reached. Upgrade to Pro.';
+            document.getElementById('mLimitError').style.display = 'block';
+          } else {
+            document.getElementById('mGenError').textContent = data.error || 'Generation failed.';
+            document.getElementById('mGenError').style.display = 'block';
+          }
+          return;
+        }
+        const reader  = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer    = '';
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream:true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const raw = line.slice(6).trim();
+            if (!raw) continue;
+            try {
+              const evt = JSON.parse(raw);
+              if (evt.text)  { fullText += evt.text; scheduleRender(false); }
+              if (evt.done)  { mRawMarkdown = fullText; mCurrentPrdId = evt.prd_id; scheduleRender(true); }
+              if (evt.error) { overlay.classList.remove('mResultOpen'); document.getElementById('mGenError').textContent = evt.error; document.getElementById('mGenError').style.display = 'block'; }
+            } catch(_) {}
+          }
+        }
+      } catch(ex) {
+        overlay.classList.remove('mResultOpen');
+        document.getElementById('mGenError').textContent = 'Network error. Please try again.';
+        document.getElementById('mGenError').style.display = 'block';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg> Generate FAANG-Quality PRD';
+      }
+    }
     </script>
   <button class="theme-toggle no-print" id="themeToggle" onclick="toggleTheme()" title="Toggle light/dark">🌙</button>
+</div><!-- #appLayout -->
+</div><!-- #desktopApp -->
 </body>
 </html>
